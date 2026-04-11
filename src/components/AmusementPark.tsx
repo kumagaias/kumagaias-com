@@ -175,7 +175,8 @@ export default function AmusementPark() {
     const merryGroup = new THREE.Group();
     merryGroup.position.set(-12, 0, 4);
     // center pole
-    merryGroup.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4), new THREE.MeshLambertMaterial({ color: 0xffaacc })));
+    const centerPole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4), new THREE.MeshLambertMaterial({ color: 0xffaacc }));
+    merryGroup.add(centerPole);
     // roof
     const roof = new THREE.Mesh(new THREE.ConeGeometry(2.2, 1.2, 16), new THREE.MeshLambertMaterial({ color: 0xff66aa }));
     roof.position.y = 3.6;
@@ -210,9 +211,15 @@ export default function AmusementPark() {
     shootGroup.position.set(-13, 0, -3);
     // booth frame
     const boothMat = new THREE.MeshLambertMaterial({ color: 0xcc8844 });
-    shootGroup.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(3, 2.5, 0.2), boothMat), { position: new THREE.Vector3(0, 1.25, 0) }));
-    shootGroup.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.5, 1.5), boothMat), { position: new THREE.Vector3(-1.5, 1.25, -0.7) }));
-    shootGroup.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.5, 1.5), boothMat), { position: new THREE.Vector3(1.5, 1.25, -0.7) }));
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(3, 2.5, 0.2), boothMat);
+    backWall.position.set(0, 1.25, 0);
+    shootGroup.add(backWall);
+    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.5, 1.5), boothMat);
+    leftWall.position.set(-1.5, 1.25, -0.7);
+    shootGroup.add(leftWall);
+    const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.5, 1.5), boothMat);
+    rightWall.position.set(1.5, 1.25, -0.7);
+    shootGroup.add(rightWall);
     // targets
     const targetColors = [0xff2222, 0x2222ff, 0x22ff22, 0xffff22, 0xff22ff];
     const targets: { mesh: THREE.Mesh; fallen: boolean; resetT: number }[] = [];
