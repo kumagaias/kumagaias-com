@@ -4,6 +4,7 @@ import { useLang } from "../../contexts/LanguageContext";
 
 interface Props {
   money: number;
+  totalVisitors: number;
   placingType: AttractionType | null;
   onSelect: (type: AttractionType | null) => void;
   attractions: PlacedAttraction[];
@@ -11,7 +12,7 @@ interface Props {
   onToggle: () => void;
 }
 
-export default function AttractionPanel({ money, placingType, onSelect, attractions, expanded, onToggle }: Props) {
+export default function AttractionPanel({ money, totalVisitors, placingType, onSelect, attractions, expanded, onToggle }: Props) {
   const { lang } = useLang();
 
   const btnBase: React.CSSProperties = {
@@ -78,7 +79,8 @@ export default function AttractionPanel({ money, placingType, onSelect, attracti
           )}
           {ALL_ATTRACTION_TYPES.map((type) => {
             const entry = CATALOG[type];
-            const canAfford = money >= entry.cost;
+            const isLocked = entry.unlockAt !== undefined && totalVisitors < entry.unlockAt;
+            const canAfford = !isLocked && money >= entry.cost;
             const isSelected = placingType === type;
             const existingCount = attractions.filter(a => a.type === type).length;
             const effectiveVisitors = existingCount > 0
@@ -88,7 +90,7 @@ export default function AttractionPanel({ money, placingType, onSelect, attracti
             return (
               <button
                 key={type}
-                onClick={() => onSelect(isSelected ? null : type)}
+                onClick={() => !isLocked && onSelect(isSelected ? null : type)}
                 disabled={!canAfford}
                 style={{
                   display: "flex",
@@ -96,35 +98,44 @@ export default function AttractionPanel({ money, placingType, onSelect, attracti
                   gap: "8px",
                   padding: "7px 10px",
                   borderRadius: "8px",
-                  border: isSelected ? "2px solid #1f8fff" : "1px solid rgba(255,255,255,0.14)",
+                  border: isSelected ? "2px solid #1f8fff" : isLocked ? "1px solid rgba(255,255,255,0.07)" : "1px solid rgba(255,255,255,0.14)",
                   background: isSelected
                     ? "rgba(31,143,255,0.3)"
+                    : isLocked ? "rgba(255,255,255,0.02)"
                     : canAfford ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
-                  color: canAfford ? "#fff" : "rgba(255,255,255,0.32)",
-                  cursor: canAfford ? "pointer" : "not-allowed",
+                  color: isLocked ? "rgba(255,255,255,0.2)" : canAfford ? "#fff" : "rgba(255,255,255,0.32)",
+                  cursor: isLocked ? "default" : canAfford ? "pointer" : "not-allowed",
                   textAlign: "left",
                   width: "100%",
                   flexShrink: 0,
                 }}
               >
-                <span style={{ fontSize: "1.2rem", flexShrink: 0 }}>{entry.emoji}</span>
+                <span style={{ fontSize: "1.2rem", flexShrink: 0 }}>{isLocked ? "🔒" : entry.emoji}</span>
                 <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
                   <div style={{ fontSize: "0.8rem", fontWeight: 600 }}>
                     {lang === "jp" ? entry.name : entry.nameEn}
                   </div>
                   <div style={{ fontSize: "0.68rem", opacity: 0.7 }}>
-                    ${entry.cost}
-                    {" · "}
-                    <span style={{ color: "#7dffb3" }}>
-                      👥+{effectiveVisitors}
-                      {hasPenalty && (
-                        <span style={{ color: "#ff4444", fontWeight: 700, marginLeft: "3px" }}>
-                          ↓{(Math.pow(0.5, existingCount) * 100).toFixed(0)}%
+                    {isLocked ? (
+                      <span style={{ color: "#ffaa44" }}>
+                        {lang === "jp" ? `累計${entry.unlockAt!.toLocaleString()}人でアンロック` : `Unlock at ${entry.unlockAt!.toLocaleString()} visitors`}
+                      </span>
+                    ) : (
+                      <>
+                        ${entry.cost}
+                        {" · "}
+                        <span style={{ color: "#7dffb3" }}>
+                          👥+{effectiveVisitors}
+                          {hasPenalty && (
+                            <span style={{ color: "#ff4444", fontWeight: 700, marginLeft: "3px" }}>
+                              ↓{(Math.pow(0.5, existingCount) * 100).toFixed(0)}%
+                            </span>
+                          )}
                         </span>
-                      )}
-                    </span>
-                    {" · "}
-                    <span style={{ color: "#ff7d7d" }}>{lang === "jp" ? "維持" : "maint"}${entry.maintenance}</span>
+                        {" · "}
+                        <span style={{ color: "#ff7d7d" }}>{lang === "jp" ? "維持" : "maint"}${entry.maintenance}</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </button>

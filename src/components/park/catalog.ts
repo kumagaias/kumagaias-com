@@ -7,22 +7,24 @@ export interface CatalogEntry {
   visitors: number;   // capacity (max visitors this attraction can draw)
   maintenance: number; // cost deducted per income tick
   emoji: string;
+  unlockAt?: number;  // total visitors required to unlock (undefined = always available)
 }
 
 // Higher visitor capacity = higher maintenance cost.
 // At full capacity, net income = visitors - maintenance.
 // During ramp-up (first ~5 ticks), maintenance can exceed income → manage cash flow!
 export const CATALOG: Record<AttractionType, CatalogEntry> = {
-  ferrisWheel:     { name: "観覧車",             nameEn: "Ferris Wheel",     cost: 550, visitors: 50, maintenance: 20, emoji: "🎡" },
-  rollerCoaster:   { name: "ジェットコースター", nameEn: "Roller Coaster",   cost: 700, visitors: 60, maintenance: 26, emoji: "🎢" },
-  dropTower:       { name: "ドロップタワー",     nameEn: "Drop Tower",       cost: 300, visitors: 40, maintenance: 14, emoji: "🗼" },
-  miniTrain:       { name: "ミニ電車",           nameEn: "Mini Train",       cost: 250, visitors: 30, maintenance: 10, emoji: "🚂" },
-  swingCarousel:   { name: "スイング",           nameEn: "Swing Carousel",   cost: 220, visitors: 28, maintenance:  9, emoji: "🎪" },
-  coffeeCups:      { name: "コーヒーカップ",     nameEn: "Coffee Cups",      cost: 200, visitors: 25, maintenance:  8, emoji: "☕" },
-  merryGoRound:    { name: "メリーゴーランド",   nameEn: "Merry-Go-Round",   cost: 180, visitors: 20, maintenance:  6, emoji: "🎠" },
   shootingGallery: { name: "射的",               nameEn: "Shooting Gallery", cost: 120, visitors: 15, maintenance:  4, emoji: "🎯" },
+  merryGoRound:    { name: "メリーゴーランド",   nameEn: "Merry-Go-Round",   cost: 180, visitors: 20, maintenance:  6, emoji: "🎠" },
+  coffeeCups:      { name: "コーヒーカップ",     nameEn: "Coffee Cups",      cost: 200, visitors: 25, maintenance:  8, emoji: "☕" },
+  swingCarousel:   { name: "スイング",           nameEn: "Swing Carousel",   cost: 220, visitors: 28, maintenance:  9, emoji: "🎪" },
+  miniTrain:       { name: "ミニ電車",           nameEn: "Mini Train",       cost: 250, visitors: 30, maintenance: 10, emoji: "🚂" },
+  dropTower:       { name: "ドロップタワー",     nameEn: "Drop Tower",       cost: 300, visitors: 40, maintenance: 14, emoji: "🗼" },
+  ferrisWheel:     { name: "観覧車",             nameEn: "Ferris Wheel",     cost: 550, visitors: 50, maintenance: 20, emoji: "🎡", unlockAt: 500 },
+  rollerCoaster:   { name: "ジェットコースター", nameEn: "Roller Coaster",   cost: 700, visitors: 60, maintenance: 26, emoji: "🎢", unlockAt: 1000 },
 };
 
+// Sorted by cost (cheapest first) — matches CATALOG key order above
 export const ALL_ATTRACTION_TYPES = Object.keys(CATALOG) as AttractionType[];
 
 // ── Shop catalog ─────────────────────────────────────────────────────────────

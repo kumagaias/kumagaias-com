@@ -284,6 +284,7 @@ export default function AmusementPark() {
       <div style={{ position: "absolute", top: "16px", left: "16px", zIndex: 10, display: "flex", flexDirection: "column", gap: "8px" }}>
         <AttractionPanel
           money={money}
+          totalVisitors={totalVisitors}
           placingType={placingType}
           onSelect={handleSelectAttraction}
           attractions={attractions}
