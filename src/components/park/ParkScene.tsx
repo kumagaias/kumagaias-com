@@ -157,6 +157,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
   const ghostRef = useRef<THREE.Mesh | null>(null);
   const ghostMatRef = useRef<THREE.MeshLambertMaterial | null>(null);
   const addPathFnRef = useRef<((attrX: number, attrZ: number, attrId: string) => void) | null>(null);
+  const pathMeshesRef = useRef<Map<string, THREE.Mesh[]>>(new Map());
   const burstEmitterRef = useRef<((pos: THREE.Vector3, color: number) => void) | null>(null);
   const onBalloonPopRef = useRef<(() => void)>(onBalloonPop);
   const demolishingRef = useRef(false);
@@ -195,6 +196,8 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
     for (const [id, info] of attractionGroupsRef.current) {
       if (!currentIds.has(id)) {
         scene.remove(info.group);
+        for (const m of pathMeshesRef.current.get(id) ?? []) scene.remove(m);
+        pathMeshesRef.current.delete(id);
         animatorsRef.current = animatorsRef.current.filter((a) => a.id !== id);
         clickablesRef.current = clickablesRef.current.filter((c) => c.id !== id);
         attractionGroupsRef.current.delete(id);
@@ -232,6 +235,8 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
     for (const [id, info] of shopGroupsRef.current) {
       if (!currentIds.has(id)) {
         scene.remove(info.group);
+        for (const m of pathMeshesRef.current.get(id) ?? []) scene.remove(m);
+        pathMeshesRef.current.delete(id);
         animatorsRef.current = animatorsRef.current.filter((a) => a.id !== id);
         clickablesRef.current = clickablesRef.current.filter((c) => c.id !== id);
         shopGroupsRef.current.delete(id);
@@ -364,6 +369,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
 
     // Park paths — central avenue (always present)
     const pathMat = new THREE.MeshLambertMaterial({ color: 0xddc888 });
+    let _currentPathId = "";
     function addPath(x1: number, z1: number, x2: number, z2: number, w = 1.0) {
       const dx = x2 - x1, dz = z2 - z1;
       const len = Math.sqrt(dx * dx + dz * dz);
@@ -372,12 +378,18 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       seg.position.set((x1 + x2) / 2, 0.02, (z1 + z2) / 2);
       seg.rotation.y = Math.atan2(dx, dz);
       scene.add(seg);
+      if (_currentPathId) {
+        const arr = pathMeshesRef.current.get(_currentPathId) ?? [];
+        arr.push(seg);
+        pathMeshesRef.current.set(_currentPathId, arr);
+      }
     }
     // Central avenue — extends deep into the park
     addPath(0, 10.4, 0, -22, 2.2);
 
     // Branch path with obstacle avoidance
     function addBranchPath(destX: number, destZ: number, skipId: string) {
+      _currentPathId = skipId;
       const others = attractionsRef.current.filter(a => a.id !== skipId);
       const xMin = Math.min(0, destX), xMax = Math.max(0, destX);
       const blocker = others.find(a =>
@@ -393,6 +405,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       } else {
         addPath(0, destZ, destX, destZ, 1.1);
       }
+      _currentPathId = "";
     }
     addPathFnRef.current = addBranchPath;
 
@@ -1110,6 +1123,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       celebrateTriggerRef.current = null;
       attractionGroupsRef.current.clear();
       shopGroupsRef.current.clear();
+      pathMeshesRef.current.clear();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
