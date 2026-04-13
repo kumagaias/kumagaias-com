@@ -12,33 +12,66 @@ export interface BuildResult {
 function buildFerrisWheel(container: THREE.Object3D, x: number, z: number): BuildResult {
   const wheelGroup = new THREE.Group();
   wheelGroup.position.set(x, 0, z);
-  const poleMat = new THREE.MeshLambertMaterial({ color: 0xcc4444 });
-  const ringMat = new THREE.MeshLambertMaterial({ color: 0xffdd00 });
-  [-1.2, 1.2].forEach((px) => {
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 8), poleMat);
-    pole.position.set(px, 4, 0);
+
+  const R = 4.5; // ring radius — bottom touches ground at y=0
+  const CY = R;  // ring center y
+  const poleMat  = new THREE.MeshLambertMaterial({ color: 0xcc4444 });
+  const ringMat  = new THREE.MeshLambertMaterial({ color: 0xffdd00 });
+  const boothMat = new THREE.MeshLambertMaterial({ color: 0xdd8844 });
+  const roofMat  = new THREE.MeshLambertMaterial({ color: 0xcc3333 });
+
+  // Support legs (A-frame style)
+  [[-1.4, 0], [1.4, 0], [0, -1.0], [0, 1.0]].forEach(([px, pz]) => {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.18, CY * 2 + 0.1), poleMat);
+    pole.position.set(px, CY, pz as number);
     wheelGroup.add(pole);
   });
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(3.5, 0.12, 8, 48), ringMat);
-  ring.position.set(0, 8, 0);
+  // Cross brace
+  const brace = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.12, 0.12), poleMat);
+  brace.position.set(0, CY * 0.55, 0);
+  wheelGroup.add(brace);
+
+  // Ring
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(R, 0.14, 8, 56), ringMat);
+  ring.position.set(0, CY, 0);
   wheelGroup.add(ring);
+
+  // Spokes
   for (let i = 0; i < 8; i++) {
     const angle = (i / 8) * Math.PI * 2;
-    const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.5), ringMat);
-    spoke.position.set(0, 8, 0);
+    const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, R), ringMat);
+    spoke.position.set(0, CY, 0);
     spoke.rotation.z = angle + Math.PI / 2;
-    spoke.translateY(1.75);
+    spoke.translateY(R / 2);
     wheelGroup.add(spoke);
   }
+
+  // Booth at base
+  const booth = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.6, 1.6), boothMat);
+  booth.position.set(0, 0.8, 1.6);
+  wheelGroup.add(booth);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(1.6, 0.8, 4), roofMat);
+  roof.position.set(0, 1.6 + 0.4, 1.6);
+  roof.rotation.y = Math.PI / 4;
+  wheelGroup.add(roof);
+  // Booth window
+  const win = new THREE.Mesh(
+    new THREE.BoxGeometry(0.7, 0.5, 0.05),
+    new THREE.MeshLambertMaterial({ color: 0xaaddff, transparent: true, opacity: 0.7 })
+  );
+  win.position.set(0, 0.9, 2.4);
+  wheelGroup.add(win);
+
+  // Gondolas (added to container so they rotate independently)
   const gondolaColors = [0xff6699, 0x66ccff, 0xffaa33, 0x99ff66, 0xcc66ff, 0xff4444, 0x44ffee, 0xffee44];
   const gondolas: THREE.Mesh[] = [];
   for (let i = 0; i < 8; i++) {
     const angle = (i / 8) * Math.PI * 2;
     const gondola = new THREE.Mesh(
-      new THREE.BoxGeometry(0.6, 0.5, 0.4),
+      new THREE.BoxGeometry(0.65, 0.55, 0.4),
       new THREE.MeshLambertMaterial({ color: gondolaColors[i] })
     );
-    gondola.position.set(x + Math.cos(angle) * 3.5, 8 + Math.sin(angle) * 3.5, z);
+    gondola.position.set(x + Math.cos(angle) * R, CY + Math.sin(angle) * R, z);
     gondolas.push(gondola);
     container.add(gondola);
   }
@@ -49,9 +82,9 @@ function buildFerrisWheel(container: THREE.Object3D, x: number, z: number): Buil
     for (let i = 0; i < 8; i++) {
       const angle = (i / 8) * Math.PI * 2 + t * 0.005 * Math.PI * 2;
       gondolas[i].position.set(
-        wheelGroup.position.x + Math.cos(angle) * 3.5,
-        8 + Math.sin(angle) * 3.5,
-        wheelGroup.position.z
+        x + Math.cos(angle) * R,
+        CY + Math.sin(angle) * R,
+        z
       );
       gondolas[i].rotation.z = -angle;
     }

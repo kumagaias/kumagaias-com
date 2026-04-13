@@ -64,14 +64,12 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
         </div>
       )}
 
-      {/* Line 3: Current guests */}
+      {/* Line 3: Current guests / capacity */}
       <div style={{ fontSize: "0.82rem", marginTop: "3px" }}>
-        👥 {currentVisitors.toLocaleString()}{lang === "jp" ? "人" : " guests"}
+        👥 {currentVisitors.toLocaleString()} / {capacity}{lang === "jp" ? "人" : ""}
       </div>
       {expanded && (
         <div style={sub}>
-          {lang === "jp" ? "定員" : "cap"} {currentVisitors}/{capacity}
-          {"  ·  "}
           👥 {totalVisitors.toLocaleString()} {lang === "jp" ? "累計" : "total"}
         </div>
       )}

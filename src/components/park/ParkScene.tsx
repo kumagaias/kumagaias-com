@@ -431,31 +431,33 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
     const cloudMat = new THREE.MeshLambertMaterial({
       color: 0xffffff,
       transparent: true,
-      opacity: 0.78,
+      opacity: 0.80,
       depthWrite: false,
     });
     type CloudEntry = { group: THREE.Group; speed: number };
     const clouds: CloudEntry[] = [];
-    for (let ci = 0; ci < 9; ci++) {
+    for (let ci = 0; ci < 12; ci++) {
       const group = new THREE.Group();
-      const puffCount = 4 + Math.floor(Math.random() * 4);
+      const puffCount = 4 + Math.floor(Math.random() * 5);
       for (let p = 0; p < puffCount; p++) {
-        const r = 1.8 + Math.random() * 2.2;
+        const r = 2.2 + Math.random() * 2.8;
         const puff = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), cloudMat);
         puff.position.set(
-          (Math.random() - 0.5) * 6,
-          (Math.random() - 0.5) * 1.6,
-          (Math.random() - 0.5) * 3.5
+          (Math.random() - 0.5) * 8,
+          (Math.random() - 0.5) * 0.8, // tight y range → flat
+          (Math.random() - 0.5) * 4
         );
         group.add(puff);
       }
+      // Flatten clouds strongly on y axis
+      group.scale.set(1, 0.28, 0.7);
       group.position.set(
         -70 + Math.random() * 140,
-        14 + Math.random() * 6,
-        -15 + Math.random() * 22
+        13 + Math.random() * 5,
+        -20 + Math.random() * 40   // extends into foreground (z up to +20)
       );
       scene.add(group);
-      clouds.push({ group, speed: 0.025 + Math.random() * 0.025 });
+      clouds.push({ group, speed: 0.022 + Math.random() * 0.028 });
     }
 
     // People — waypoint-based path following
