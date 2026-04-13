@@ -33,6 +33,7 @@ export default function ShopPanel({ money, placingShopType, onSelect }: Props) {
           whiteSpace: "nowrap",
           flexShrink: 0,
           textAlign: "left",
+          width: "160px",
         }}
       >
         🏪 {lang === "jp" ? "ショップ配置" : "Build Shop"}

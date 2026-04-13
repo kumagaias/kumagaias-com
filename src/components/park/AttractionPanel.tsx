@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { CATALOG, ALL_ATTRACTION_TYPES } from "./catalog";
-import type { AttractionType } from "./types";
+import type { AttractionType, PlacedAttraction } from "./types";
 import { useLang } from "../../contexts/LanguageContext";
 
 interface Props {
   money: number;
   placingType: AttractionType | null;
   onSelect: (type: AttractionType | null) => void;
+  attractions: PlacedAttraction[];
 }
 
-export default function AttractionPanel({ money, placingType, onSelect }: Props) {
+export default function AttractionPanel({ money, placingType, onSelect, attractions }: Props) {
   const [expanded, setExpanded] = useState(false);
   const { lang } = useLang();
 
@@ -24,6 +25,7 @@ export default function AttractionPanel({ money, placingType, onSelect }: Props)
     whiteSpace: "nowrap",
     flexShrink: 0,
     textAlign: "left",
+    width: "160px",
   };
 
   return (
@@ -78,6 +80,11 @@ export default function AttractionPanel({ money, placingType, onSelect }: Props)
             const entry = CATALOG[type];
             const canAfford = money >= entry.cost;
             const isSelected = placingType === type;
+            const existingCount = attractions.filter(a => a.type === type).length;
+            const effectiveVisitors = existingCount > 0
+              ? Math.round(entry.visitors * Math.pow(0.5, existingCount))
+              : entry.visitors;
+            const hasPenalty = existingCount > 0;
             return (
               <button
                 key={type}
@@ -106,7 +113,13 @@ export default function AttractionPanel({ money, placingType, onSelect }: Props)
                     {lang === "jp" ? entry.name : entry.nameEn}
                   </div>
                   <div style={{ fontSize: "0.68rem", opacity: 0.7 }}>
-                    ${entry.cost} · 👥+{entry.visitors}
+                    ${entry.cost} · 👥+{effectiveVisitors}
+                    {hasPenalty && (
+                      <span style={{ color: "#ffaa44", marginLeft: "3px" }}>
+                        (×{(Math.pow(0.5, existingCount) * 100).toFixed(0)}%)
+                      </span>
+                    )}
+                    {" · "}{lang === "jp" ? "維持" : "maint"}${entry.maintenance}
                   </div>
                 </div>
               </button>

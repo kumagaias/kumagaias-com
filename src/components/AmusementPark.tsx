@@ -16,6 +16,18 @@ const INITIAL_MONEY = 1500;
 const INCOME_INTERVAL_MS = 5000;
 const VISITOR_FILL_TICKS = 5;
 
+/** Each duplicate of the same type contributes 50% of the previous one. */
+function calcCapacity(attractions: PlacedAttraction[]): number {
+  const counts: Partial<Record<AttractionType, number>> = {};
+  let total = 0;
+  for (const a of attractions) {
+    const n = counts[a.type] ?? 0;
+    total += Math.round(CATALOG[a.type].visitors * Math.pow(0.5, n));
+    counts[a.type] = n + 1;
+  }
+  return total;
+}
+
 function pickInitialPos(): { x: number; z: number } {
   return { x: (Math.random() - 0.5) * 20, z: -8 + Math.random() * 6 };
 }
@@ -48,7 +60,7 @@ export default function AmusementPark() {
   useEffect(() => {
     const id = setInterval(() => {
       setState((s) => {
-        const capacity = s.attractions.reduce((sum, a) => sum + CATALOG[a.type].visitors, 0);
+        const capacity = calcCapacity(s.attractions);
         const attrMaint = s.attractions.reduce((sum, a) => sum + CATALOG[a.type].maintenance, 0);
         const shopMaint = s.shops.reduce((sum, sh) => sum + SHOP_CATALOG[sh.type].maintenance, 0);
         const shopRate  = s.shops.reduce((sum, sh) => sum + SHOP_CATALOG[sh.type].revenueRate, 0);
@@ -147,7 +159,7 @@ export default function AmusementPark() {
   }, []);
 
   // Derived values for HUD
-  const capacity = attractions.reduce((sum, a) => sum + CATALOG[a.type].visitors, 0);
+  const capacity = calcCapacity(attractions);
   const maintenanceCost =
     attractions.reduce((sum, a) => sum + CATALOG[a.type].maintenance, 0) +
     shops.reduce((sum, sh) => sum + SHOP_CATALOG[sh.type].maintenance, 0);
@@ -174,6 +186,7 @@ export default function AmusementPark() {
           money={money}
           placingType={placingType}
           onSelect={handleSelectAttraction}
+          attractions={attractions}
         />
         <ShopPanel
           money={money}
@@ -195,6 +208,7 @@ export default function AmusementPark() {
               cursor: "pointer",
               backdropFilter: "blur(6px)",
               textAlign: "left",
+              width: "160px",
             }}
           >
             🚧 {lang === "jp" ? "取り壊す" : "Demolish"}
