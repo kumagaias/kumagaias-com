@@ -320,38 +320,107 @@ function buildShootingGallery(container: THREE.Object3D, x: number, z: number): 
 function buildMiniTrain(container: THREE.Object3D, x: number, z: number): BuildResult {
   const trainGroup = new THREE.Group();
   trainGroup.position.set(x, 0, z);
-  const trainRadius = 5;
+
+  const rx = 6, rz = 4;
   const trackPoints: THREE.Vector3[] = [];
-  for (let i = 0; i <= 64; i++) {
-    const a = (i / 64) * Math.PI * 2;
-    trackPoints.push(new THREE.Vector3(Math.cos(a) * trainRadius, 0.05, Math.sin(a) * trainRadius));
+  for (let i = 0; i <= 80; i++) {
+    const a = (i / 80) * Math.PI * 2;
+    trackPoints.push(new THREE.Vector3(Math.cos(a) * rx, 0.05, Math.sin(a) * rz));
   }
   const trainCurve = new THREE.CatmullRomCurve3(trackPoints, true);
-  trainGroup.add(new THREE.Mesh(
-    new THREE.TubeGeometry(trainCurve, 128, 0.06, 6, true),
-    new THREE.MeshLambertMaterial({ color: 0x888888 })
-  ));
-  const trainCarColors = [0xff4400, 0xffaa00, 0x44cc00];
+
+  // Rails (two parallel tubes)
+  const railMat = new THREE.MeshLambertMaterial({ color: 0x999999 });
+  for (const offset of [-0.18, 0.18]) {
+    const railPts = trackPoints.map(p => new THREE.Vector3(p.x + offset, p.y, p.z));
+    const railCurve = new THREE.CatmullRomCurve3(railPts, true);
+    trainGroup.add(new THREE.Mesh(
+      new THREE.TubeGeometry(railCurve, 128, 0.04, 4, true),
+      railMat
+    ));
+  }
+  // Sleepers
+  const sleeperMat = new THREE.MeshLambertMaterial({ color: 0x7a5230 });
+  for (let i = 0; i < 40; i++) {
+    const pt = trainCurve.getPoint(i / 40);
+    const tang = trainCurve.getTangent(i / 40);
+    const slp = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.06, 0.12), sleeperMat);
+    slp.position.copy(pt);
+    slp.lookAt(pt.clone().add(tang));
+    trainGroup.add(slp);
+  }
+
+  // Station platform
+  const statMat = new THREE.MeshLambertMaterial({ color: 0xfff0cc });
+  const roofMat2 = new THREE.MeshLambertMaterial({ color: 0xcc3333 });
+  const platform = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.18, 1.4), statMat);
+  platform.position.set(-rx, 0.09, 0);
+  trainGroup.add(platform);
+  const statRoof = new THREE.Mesh(new THREE.BoxGeometry(3.7, 0.12, 1.6), roofMat2);
+  statRoof.position.set(-rx, 1.5, 0);
+  trainGroup.add(statRoof);
+  for (const [px, pz] of [[-rx - 1.7, -0.65], [-rx - 1.7, 0.65], [-rx + 1.7, -0.65], [-rx + 1.7, 0.65]] as [number,number][]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.4, 5),
+      new THREE.MeshLambertMaterial({ color: 0xcc9955 }));
+    post.position.set(px, 0.7, pz);
+    trainGroup.add(post);
+  }
+
+  // Train cars (locomotive + 3 carriages)
+  const carColors = [0xcc2200, 0x3355cc, 0x228822, 0xcc7700];
   const trainCars: THREE.Mesh[] = [];
-  for (let i = 0; i < 3; i++) {
-    const car = new THREE.Mesh(
-      new THREE.BoxGeometry(0.7, 0.4, 0.5),
-      new THREE.MeshLambertMaterial({ color: trainCarColors[i] })
+  for (let i = 0; i < 4; i++) {
+    const isLoco = i === 0;
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(isLoco ? 0.9 : 0.75, isLoco ? 0.55 : 0.45, 0.55),
+      new THREE.MeshLambertMaterial({ color: carColors[i] })
     );
-    container.add(car);
-    trainCars.push(car);
+    if (isLoco) {
+      const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.25, 8),
+        new THREE.MeshLambertMaterial({ color: 0x222222 }));
+      chimney.position.set(0.3, 0.38, 0);
+      body.add(chimney);
+    }
+    const win = new THREE.Mesh(
+      new THREE.BoxGeometry(0.15, 0.18, 0.56),
+      new THREE.MeshLambertMaterial({ color: 0xaaddff, transparent: true, opacity: 0.7 })
+    );
+    win.position.set(-0.15, 0.1, 0);
+    body.add(win);
+    container.add(body);
+    trainCars.push(body);
   }
   container.add(trainGroup);
 
+  // Smoke puffs
+  const smokeMat = new THREE.MeshLambertMaterial({ color: 0xdddddd, transparent: true, opacity: 0.5 });
+  const smokePuffs = Array.from({ length: 5 }, () => {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.12 + Math.random() * 0.1, 5, 4), smokeMat.clone() as THREE.MeshLambertMaterial);
+    container.add(s);
+    return s;
+  });
+
   const animator: Animator = (t) => {
-    for (let i = 0; i < 3; i++) {
-      const offset = (t * 0.03 + i * 0.05) % 1;
+    for (let i = 0; i < 4; i++) {
+      const offset = ((t * 0.025 + i * 0.055) % 1 + 1) % 1;
       const tp = trainCurve.getPoint(offset).add(trainGroup.position);
       const tt = trainCurve.getTangent(offset);
       trainCars[i].position.copy(tp);
-      trainCars[i].position.y = 0.25;
+      trainCars[i].position.y = 0.3;
       trainCars[i].lookAt(tp.clone().add(tt));
     }
+    // Smoke rises from locomotive chimney
+    smokePuffs.forEach((s, i) => {
+      const age = ((t * 0.6 + i * 0.2) % 1);
+      const locoPos = trainCars[0].position.clone();
+      const locoFwd = new THREE.Vector3(0, 0, 1).applyQuaternion(trainCars[0].quaternion);
+      s.position.copy(locoPos).addScaledVector(locoFwd, 0.35);
+      s.position.y = 0.7 + age * 2.5;
+      s.position.x += Math.sin(t + i) * 0.06;
+      (s.material as THREE.MeshLambertMaterial).opacity = 0.45 * (1 - age);
+      const sc = 0.5 + age * 1.5;
+      s.scale.set(sc, sc, sc);
+    });
   };
 
   return { animator, clickTargets: trainCars, burstColor: 0xff4400 };
@@ -360,10 +429,12 @@ function buildMiniTrain(container: THREE.Object3D, x: number, z: number): BuildR
 function buildDropTower(container: THREE.Object3D, x: number, z: number): BuildResult {
   const dropGroup = new THREE.Group();
   dropGroup.position.set(x, 0, z);
-  dropGroup.add(new THREE.Mesh(
+  const pillar = new THREE.Mesh(
     new THREE.CylinderGeometry(0.3, 0.4, 9, 12),
     new THREE.MeshLambertMaterial({ color: 0xaaaaaa })
-  ));
+  );
+  pillar.position.y = 4.5; // bottom at y=0
+  dropGroup.add(pillar);
   const dropTopCap = new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.2, 12), new THREE.MeshLambertMaterial({ color: 0xff2244 }));
   dropTopCap.position.y = 9.6;
   dropGroup.add(dropTopCap);
@@ -404,14 +475,17 @@ function buildDropTower(container: THREE.Object3D, x: number, z: number): BuildR
 function buildSwingCarousel(container: THREE.Object3D, x: number, z: number): BuildResult {
   const swingGroup = new THREE.Group();
   swingGroup.position.set(x, 0, z);
-  swingGroup.add(new THREE.Mesh(
+  const centerPole = new THREE.Mesh(
     new THREE.CylinderGeometry(0.15, 0.2, 5, 12),
     new THREE.MeshLambertMaterial({ color: 0x44aaff })
-  ));
+  );
+  centerPole.position.y = 2.5; // bottom at y=0
+  swingGroup.add(centerPole);
   const baseDisk = new THREE.Mesh(
     new THREE.CylinderGeometry(0.5, 0.5, 0.2, 16),
     new THREE.MeshLambertMaterial({ color: 0x44aaff })
   );
+  baseDisk.position.y = 0.1;
   swingGroup.add(baseDisk);
   const swingCanopy = new THREE.Mesh(new THREE.ConeGeometry(2.5, 1.0, 16), new THREE.MeshLambertMaterial({ color: 0xff6644 }));
   swingCanopy.position.y = 5.5;
