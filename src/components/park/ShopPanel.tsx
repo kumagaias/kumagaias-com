@@ -32,7 +32,6 @@ export default function ShopPanel({ money, placingShopType, onSelect }: Props) {
           backdropFilter: "blur(6px)",
           whiteSpace: "nowrap",
           flexShrink: 0,
-          width: "100%",
           textAlign: "left",
         }}
       >
