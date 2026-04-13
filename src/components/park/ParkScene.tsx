@@ -227,7 +227,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       animatorsRef.current.push({ id: a.id, fn: result.animator });
       const { clickTargets, burstColor } = result;
       if (getTimeOfDay() === "night") {
-        const pl = new THREE.PointLight(burstColor, 1.8, 14);
+        const pl = new THREE.PointLight(burstColor, 2.0, 7);
         pl.position.set(0, 3.5, 0);
         group.add(pl);
       }
@@ -267,7 +267,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       shopGroupsRef.current.set(s.id, { group, x: s.x, z: s.z });
       animatorsRef.current.push({ id: s.id, fn: result.animator });
       if (getTimeOfDay() === "night") {
-        const pl = new THREE.PointLight(result.burstColor, 1.2, 10);
+        const pl = new THREE.PointLight(result.burstColor, 1.5, 6);
         pl.position.set(0, 2.5, 0);
         group.add(pl);
       }
@@ -684,7 +684,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
           glow.position.y -= 0.1;
           lp.add(glow);
           // Point light for nearby illumination
-          const pl = new THREE.PointLight(0xffdd88, isNight ? 1.2 : 0, 8);
+          const pl = new THREE.PointLight(0xffdd88, isNight ? 1.2 : 0, 6);
           pl.position.copy(glow.position);
           lp.add(pl);
         }
@@ -915,7 +915,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       animatorsRef.current.push({ id: a.id, fn: result.animator });
       const { clickTargets, burstColor } = result;
       if (isNight) {
-        const pl = new THREE.PointLight(burstColor, 1.8, 14);
+        const pl = new THREE.PointLight(burstColor, 2.0, 7);
         pl.position.set(0, 3.5, 0);
         group.add(pl);
       }
