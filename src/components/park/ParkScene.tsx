@@ -643,6 +643,57 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.2 })));
     }
 
+    // Street lamps — along roadside and park central avenue
+    {
+      const poleMat = new THREE.MeshLambertMaterial({ color: 0x445566 });
+      const lampColor = isNight ? 0xffee99 : 0xddeeff;
+      const lampMat = new THREE.MeshLambertMaterial({ color: lampColor, emissive: isNight ? 0xffcc44 : 0x000000, emissiveIntensity: isNight ? 1.0 : 0 });
+      const armMat  = new THREE.MeshLambertMaterial({ color: 0x334455 });
+
+      const addLamp = (lx: number, lz: number, facingLeft = false) => {
+        const lp = new THREE.Group();
+        // Pole
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 4.2, 8), poleMat);
+        pole.position.y = 2.1;
+        lp.add(pole);
+        // Arm
+        const arm = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.07, 0.07), armMat);
+        arm.position.set(facingLeft ? -0.4 : 0.4, 4.1, 0);
+        lp.add(arm);
+        // Lamp head
+        const head = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.14, 0.22, 10), lampMat);
+        head.position.set(facingLeft ? -0.8 : 0.8, 4.0, 0);
+        lp.add(head);
+        // Glow sphere (night only)
+        if (isNight) {
+          const glow = new THREE.Mesh(
+            new THREE.SphereGeometry(0.18, 8, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffee88, transparent: true, opacity: 0.6 })
+          );
+          glow.position.copy(head.position);
+          glow.position.y -= 0.1;
+          lp.add(glow);
+          // Point light for nearby illumination
+          const pl = new THREE.PointLight(0xffdd88, isNight ? 1.2 : 0, 8);
+          pl.position.copy(glow.position);
+          lp.add(pl);
+        }
+        lp.position.set(lx, 0, lz);
+        scene.add(lp);
+      };
+
+      // Road-side lamps (near sidewalk, both sides), every 10 units
+      for (let lx = -30; lx <= 30; lx += 10) {
+        addLamp(lx, 12.2, false);   // near side (park-facing), arm toward road
+        addLamp(lx, 15.8, true);    // far side (road outer), arm toward road
+      }
+      // Park avenue lamps (both sides of central path), every 8 units
+      for (let lz = 8; lz >= -20; lz -= 8) {
+        addLamp(-1.8, lz, false);   // left side of avenue
+        addLamp( 1.8, lz, true);    // right side of avenue
+      }
+    }
+
     // Weather system
     type WeatherState = "sunny" | "cloudy" | "rainy";
     let currentWeather: WeatherState = "sunny";
