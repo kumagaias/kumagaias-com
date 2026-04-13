@@ -3,6 +3,8 @@ import { useLang } from "../../contexts/LanguageContext";
 import type { WeatherType } from "./ParkScene";
 
 const WEATHER_ICON: Record<WeatherType, string> = { sunny: "☀️", cloudy: "⛅", rainy: "🌧️" };
+const WEATHER_LABEL_JP: Record<WeatherType, string> = { sunny: "晴れ", cloudy: "くもり", rainy: "雨" };
+const WEATHER_LABEL_EN: Record<WeatherType, string> = { sunny: "Sunny", cloudy: "Cloudy", rainy: "Rainy" };
 
 interface Props {
   money: number;
@@ -22,8 +24,9 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
   const netPerTick   = grossPerTick - maintenanceCost;
   const netColor     = netPerTick >= 0 ? "#7dffb3" : "#ff7d7d";
   const sub: React.CSSProperties = {
-    fontSize: "0.64rem", opacity: 0.5, textAlign: "right", lineHeight: 1.5,
+    fontSize: "0.64rem", opacity: 0.5, textAlign: "right", lineHeight: 1.6,
   };
+  const weatherLabel = lang === "jp" ? WEATHER_LABEL_JP[weather] : WEATHER_LABEL_EN[weather];
 
   return (
     <div
@@ -44,18 +47,23 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
         userSelect: "none",
         display: "flex",
         flexDirection: "column",
-        gap: "1px",
+        gap: "2px",
       }}
     >
-      {/* Line 1: Money + weather */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "6px" }}>
-        <span style={{ fontSize: "0.9rem" }}>{WEATHER_ICON[weather]}</span>
-        <span style={{ fontSize: "1.2rem", fontWeight: 800, letterSpacing: "0.02em" }}>${money.toLocaleString()}</span>
+      {/* Line 1: Weather icon + label */}
+      <div style={{ fontSize: "0.78rem", opacity: 0.85, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "4px" }}>
+        <span>{WEATHER_ICON[weather]}</span>
+        <span>{weatherLabel}</span>
       </div>
 
-      {/* Line 2: Net P&L */}
-      <div style={{ fontSize: "0.82rem", fontWeight: 700, color: netColor, marginTop: "3px" }}>
-        💰 {netPerTick >= 0 ? "+" : ""}${netPerTick}
+      {/* Line 2: Net P&L / money */}
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "flex-end", gap: "6px", marginTop: "1px" }}>
+        <span style={{ fontSize: "0.82rem", fontWeight: 700, color: netColor }}>
+          {netPerTick >= 0 ? "+" : ""}${netPerTick}
+        </span>
+        <span style={{ fontSize: "1.1rem", fontWeight: 800, letterSpacing: "0.02em" }}>
+          ${money.toLocaleString()}
+        </span>
       </div>
       {expanded && (
         <div style={{ ...sub, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
@@ -64,8 +72,8 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
         </div>
       )}
 
-      {/* Line 3: Current guests / capacity */}
-      <div style={{ fontSize: "0.82rem", marginTop: "3px" }}>
+      {/* Line 3: Current / capacity guests */}
+      <div style={{ fontSize: "0.82rem", marginTop: "2px" }}>
         👥 {currentVisitors.toLocaleString()} / {capacity}{lang === "jp" ? "人" : ""}
       </div>
       {expanded && (
@@ -75,7 +83,7 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
       )}
 
       {/* Toggle hint */}
-      <div style={{ fontSize: "0.58rem", opacity: 0.28, marginTop: "3px" }}>
+      <div style={{ fontSize: "0.58rem", opacity: 0.28, marginTop: "2px" }}>
         {expanded
           ? (lang === "jp" ? "閉じる" : "close")
           : (lang === "jp" ? "詳細▾" : "detail▾")}

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type React from "react";
 import * as THREE from "three";
 import type { PlacedAttraction, AttractionType, PlacedShop, ShopType } from "./types";
 import { buildAttraction, type Animator } from "./builders";
@@ -140,9 +141,10 @@ interface Props {
   onPlaceShop: (x: number, z: number) => void;
   onDemolishShop: (id: string) => void;
   onWeatherChange: (w: WeatherType) => void;
+  celebrateTriggerRef: React.MutableRefObject<(() => void) | null>;
 }
 
-export default function ParkScene({ attractions, placingType, onPlace, onBalloonPop, demolishing, onDemolish, shops, placingShopType, onPlaceShop, onDemolishShop, onWeatherChange }: Props) {
+export default function ParkScene({ attractions, placingType, onPlace, onBalloonPop, demolishing, onDemolish, shops, placingShopType, onPlaceShop, onDemolishShop, onWeatherChange, celebrateTriggerRef }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const renderedRef = useRef<Set<string>>(new Set());
@@ -165,6 +167,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
   const onDemolishShopRef = useRef<(id: string) => void>(onDemolishShop);
   const shopGroupsRef = useRef<Map<string, AttractionGroupInfo>>(new Map());
   const onWeatherChangeRef = useRef<(w: WeatherType) => void>(onWeatherChange);
+  const celebrateRef = useRef<(() => void) | null>(null);
 
   // Sync refs with props each render
   useEffect(() => { placingTypeRef.current = placingType; }, [placingType]);
@@ -430,10 +433,10 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       scene.add(flag);
     }
 
-    // Balloons
+    // Balloons — keep only 2 floating at once
     const balloons: { mesh: THREE.Mesh; speed: number; startY: number; x: number; z: number; color: number }[] = [];
     const balloonColors = [0xff2222, 0xff8800, 0xffff00, 0x00cc44, 0x2288ff, 0xcc44ff, 0xff44aa];
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 2; i++) {
       const color = balloonColors[i % balloonColors.length];
       const balloon = new THREE.Mesh(
         new THREE.SphereGeometry(0.25, 12, 12),
@@ -644,6 +647,96 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
     const rain = new THREE.Points(rainGeo, rainMat);
     rain.visible = false;
     scene.add(rain);
+
+    // ── Fireworks & milestone celebration ───────────────────────────────
+    type FireworkShell = {
+      mesh: THREE.Mesh;
+      vel: THREE.Vector3;
+      life: number;
+      exploded: boolean;
+      explodeAt: number;
+      color: number;
+    };
+    let fireworks: FireworkShell[] = [];
+    const fwColors = [0xff2244, 0xff8800, 0xffee00, 0x44ff88, 0x44aaff, 0xcc44ff, 0xffffff, 0xff44cc];
+
+    const launchFirework = (cx: number, cz: number) => {
+      const color = fwColors[Math.floor(Math.random() * fwColors.length)];
+      const shell = new THREE.Mesh(
+        new THREE.SphereGeometry(0.12, 6, 4),
+        new THREE.MeshBasicMaterial({ color })
+      );
+      shell.position.set(cx + (Math.random() - 0.5) * 6, 0.5, cz + (Math.random() - 0.5) * 4);
+      scene.add(shell);
+      fireworks.push({
+        mesh: shell,
+        vel: new THREE.Vector3((Math.random() - 0.5) * 0.12, 0.4 + Math.random() * 0.2, (Math.random() - 0.5) * 0.08),
+        life: 1,
+        exploded: false,
+        explodeAt: 12 + Math.random() * 6,
+        color,
+      });
+    };
+
+    const explodeFirework = (fw: FireworkShell) => {
+      fw.exploded = true;
+      scene.remove(fw.mesh);
+      const pos = fw.mesh.position;
+      for (let i = 0; i < 28; i++) {
+        const spark = new THREE.Mesh(
+          new THREE.SphereGeometry(0.07, 4, 3),
+          new THREE.MeshBasicMaterial({ color: fw.color })
+        );
+        spark.position.copy(pos);
+        const angle = Math.random() * Math.PI * 2;
+        const elev = (Math.random() - 0.3) * Math.PI;
+        const spd = 0.18 + Math.random() * 0.22;
+        scene.add(spark);
+        bursts.push({
+          mesh: spark,
+          vel: new THREE.Vector3(
+            Math.cos(angle) * Math.cos(elev) * spd,
+            Math.sin(elev) * spd + 0.04,
+            Math.sin(angle) * Math.cos(elev) * spd,
+          ),
+          life: 1.0,
+        });
+      }
+    };
+
+    const triggerCelebration = () => {
+      // Launch 8 fireworks with staggered delays
+      for (let i = 0; i < 8; i++) {
+        setTimeout(() => launchFirework((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 10), i * 400);
+      }
+      // Release a burst of balloons
+      for (const b of balloons) {
+        b.mesh.visible = true;
+        b.mesh.position.set(b.x + (Math.random() - 0.5) * 10, b.startY, b.z + (Math.random() - 0.5) * 6);
+      }
+      // Spawn 12 extra celebration balloons that fade out
+      for (let i = 0; i < 12; i++) {
+        const color = balloonColors[i % balloonColors.length];
+        const cbm = new THREE.Mesh(
+          new THREE.SphereGeometry(0.28, 10, 10),
+          new THREE.MeshLambertMaterial({ color, transparent: true, opacity: 1 })
+        );
+        cbm.position.set((Math.random() - 0.5) * 22, 1 + Math.random() * 3, (Math.random() - 0.5) * 12);
+        scene.add(cbm);
+        setTimeout(() => {
+          let life = 1;
+          const fade = setInterval(() => {
+            life -= 0.015;
+            (cbm.material as THREE.MeshLambertMaterial).opacity = Math.max(0, life);
+            cbm.position.y += 0.04;
+            if (life <= 0) { scene.remove(cbm); clearInterval(fade); }
+          }, 16);
+        }, i * 200);
+      }
+    };
+
+    celebrateRef.current = triggerCelebration;
+    celebrateTriggerRef.current = triggerCelebration;
 
     // Burst system
     let bursts: { mesh: THREE.Mesh; vel: THREE.Vector3; life: number }[] = [];
@@ -942,6 +1035,19 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
         }
       });
 
+      // Fireworks — rise then explode
+      fireworks = fireworks.filter((fw) => {
+        if (fw.exploded) return false;
+        fw.mesh.position.add(fw.vel);
+        fw.vel.y -= 0.005;
+        fw.explodeAt -= 1;
+        if (fw.explodeAt <= 0 || fw.mesh.position.y > 22) {
+          explodeFirework(fw);
+          return false;
+        }
+        return true;
+      });
+
       // Bursts
       bursts = bursts.filter((b) => {
         b.life -= 0.04;
@@ -983,6 +1089,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       sceneRef.current = null;
       addPathFnRef.current = null;
       burstEmitterRef.current = null;
+      celebrateTriggerRef.current = null;
       attractionGroupsRef.current.clear();
       shopGroupsRef.current.clear();
     };

@@ -59,6 +59,9 @@ export default function AmusementPark() {
   const [shopPanelOpen, setShopPanelOpen] = useState(false);
   const [weather, setWeather] = useState<WeatherType>("sunny");
   const weatherRef = useRef<WeatherType>("sunny");
+  const celebrateTriggerRef = useRef<(() => void) | null>(null);
+  const nextMilestoneRef = useRef(0);
+  const MILESTONES = [100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000];
   const handleWeatherChange = useCallback((w: WeatherType) => {
     setWeather(w);
     weatherRef.current = w;
@@ -81,11 +84,18 @@ export default function AmusementPark() {
         const newCurrent = Math.min(effectiveCap, Math.max(0, s.currentVisitors + (weatherRef.current === "rainy" ? -Math.ceil(s.currentVisitors * 0.15) : growBy)));
         // Income = base (1/visitor) + shop revenue — all maintenance
         const income = newCurrent * (1 + shopRate) - attrMaint - shopMaint;
+        const newTotal = s.totalVisitors + newCurrent;
+        // Milestone check
+        const milestone = MILESTONES[nextMilestoneRef.current];
+        if (milestone !== undefined && newTotal >= milestone) {
+          nextMilestoneRef.current += 1;
+          setTimeout(() => celebrateTriggerRef.current?.(), 0);
+        }
         return {
           ...s,
           money: s.money + Math.round(income),
           currentVisitors: newCurrent,
-          totalVisitors: s.totalVisitors + newCurrent,
+          totalVisitors: newTotal,
         };
       });
     }, INCOME_INTERVAL_MS);
@@ -192,6 +202,7 @@ export default function AmusementPark() {
         onPlaceShop={handlePlaceShop}
         onDemolishShop={handleDemolishShop}
         onWeatherChange={handleWeatherChange}
+        celebrateTriggerRef={celebrateTriggerRef}
       />
 
       {/* Left panel column: Build Attraction → Build Shop → Demolish */}
