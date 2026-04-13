@@ -118,7 +118,7 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
       )}
 
       {/* Toggle hint */}
-      <div style={{ fontSize: "0.58rem", opacity: 0.28, marginTop: "2px" }}>
+      <div style={{ fontSize: "0.58rem", opacity: 0.28, marginTop: "8px" }}>
         {expanded
           ? (lang === "jp" ? "閉じる" : "close")
           : (lang === "jp" ? "詳細▾" : "detail▾")}

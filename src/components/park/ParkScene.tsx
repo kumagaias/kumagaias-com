@@ -723,24 +723,29 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
         b.mesh.visible = true;
         b.mesh.position.set(b.x + (Math.random() - 0.5) * 10, b.startY, b.z + (Math.random() - 0.5) * 6);
       }
-      // Spawn extra celebration balloons that fade out
+      // Spawn extra celebration balloons that float up and fade out
       for (let i = 0; i < extraBalloons; i++) {
         const color = balloonColors[i % balloonColors.length];
         const cbm = new THREE.Mesh(
-          new THREE.SphereGeometry(0.28, 10, 10),
+          new THREE.SphereGeometry(0.32, 10, 10),
           new THREE.MeshLambertMaterial({ color, transparent: true, opacity: 1 })
         );
-        cbm.position.set((Math.random() - 0.5) * 22, 1 + Math.random() * 3, (Math.random() - 0.5) * 12);
+        const bx = (Math.random() - 0.5) * 26;
+        const bz = (Math.random() - 0.5) * 14;
+        cbm.position.set(bx, 0.5, bz);
         scene.add(cbm);
+        // drift speed per balloon (slight horizontal wobble)
+        const drift = (Math.random() - 0.5) * 0.015;
         setTimeout(() => {
           let life = 1;
           const fade = setInterval(() => {
-            life -= 0.015;
+            life -= 0.007;
             (cbm.material as THREE.MeshLambertMaterial).opacity = Math.max(0, life);
-            cbm.position.y += 0.04;
+            cbm.position.y += 0.07;
+            cbm.position.x += drift;
             if (life <= 0) { scene.remove(cbm); clearInterval(fade); }
           }, 16);
-        }, i * 200);
+        }, i * 60);
       }
     };
 
