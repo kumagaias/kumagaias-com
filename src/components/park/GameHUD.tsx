@@ -21,6 +21,13 @@ interface Props {
 export default function GameHUD({ money, currentVisitors, totalVisitors, capacity, maintenanceCost, grossPerTick, weather, onSave, onRestart }: Props) {
   const { lang } = useLang();
   const [expanded, setExpanded] = useState(false);
+  const [savedMsg, setSavedMsg] = useState(false);
+
+  const handleSave = () => {
+    onSave();
+    setSavedMsg(true);
+    setTimeout(() => setSavedMsg(false), 2000);
+  };
 
   const netPerTick = grossPerTick - maintenanceCost;
   const netColor     = netPerTick >= 0 ? "#7dffb3" : "#ff7d7d";
@@ -86,14 +93,16 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
       {expanded && (
         <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginTop: "6px" }} onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={onSave}
+            onClick={handleSave}
             style={{
               width: "100%", padding: "6px 0", borderRadius: "7px", fontSize: "0.72rem", fontWeight: 700,
               border: "1px solid rgba(125,255,179,0.4)", background: "rgba(125,255,179,0.14)",
               color: "#7dffb3", cursor: "pointer",
             }}
           >
-            {lang === "jp" ? "💾 セーブ" : "💾 Save"}
+            {savedMsg
+              ? (lang === "jp" ? "✅ セーブしました！" : "✅ Saved!")
+              : (lang === "jp" ? "💾 セーブ" : "💾 Save")}
           </button>
           <button
             onClick={onRestart}
