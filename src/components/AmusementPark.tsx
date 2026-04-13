@@ -17,7 +17,7 @@ const INCOME_INTERVAL_MS = 5000;
 const VISITOR_FILL_TICKS = 5;
 
 function pickInitialPos(): { x: number; z: number } {
-  return { x: (Math.random() - 0.5) * 24, z: -8 + Math.random() * 12 };
+  return { x: (Math.random() - 0.5) * 20, z: -8 + Math.random() * 6 };
 }
 
 function initialState() {
