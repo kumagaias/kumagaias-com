@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type React from "react";
 import * as THREE from "three";
 import type { PlacedAttraction, AttractionType, PlacedShop, ShopType } from "./types";
 import { buildAttraction, type Animator } from "./builders";
 import { buildShop } from "./shopBuilders";
+import { CATALOG, SHOP_CATALOG } from "./catalog";
 
 function getTimeOfDay(): "day" | "night" {
   const hour = new Date().getHours();
@@ -173,6 +174,10 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
   const celebrateRef = useRef<(() => void) | null>(null);
   const currentVisitorsRef = useRef(currentVisitors);
   const capacityRef = useRef(capacity);
+
+  type InfoPanel = { id: string; kind: "attraction" | "shop"; screenX: number; screenY: number };
+  const [infoPanel, setInfoPanel] = useState<InfoPanel | null>(null);
+  const setInfoPanelRef = useRef(setInfoPanel);
 
   // Sync refs with props each render
   useEffect(() => { placingTypeRef.current = placingType; }, [placingType]);
@@ -982,6 +987,26 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
         return;
       }
 
+      // Attraction / shop info panel click
+      {
+        const infoObjs: { obj: THREE.Object3D; id: string; kind: "attraction" | "shop" }[] = [];
+        for (const [id, info] of attractionGroupsRef.current)
+          info.group.traverse(o => { if ((o as THREE.Mesh).isMesh) infoObjs.push({ obj: o, id, kind: "attraction" }); });
+        for (const [id, info] of shopGroupsRef.current)
+          info.group.traverse(o => { if ((o as THREE.Mesh).isMesh) infoObjs.push({ obj: o, id, kind: "shop" }); });
+        const hits = raycaster.intersectObjects(infoObjs.map(d => d.obj), true);
+        if (hits.length > 0) {
+          const entry = infoObjs.find(d => d.obj === hits[0].object);
+          if (entry) {
+            const rect = mount.getBoundingClientRect();
+            setInfoPanelRef.current({ id: entry.id, kind: entry.kind, screenX: e.clientX - rect.left, screenY: e.clientY - rect.top });
+            return;
+          }
+        }
+        // Clicked empty space — close panel
+        setInfoPanelRef.current(null);
+      }
+
       // Burst click
       const allObjects = clickablesRef.current.flatMap((c) => c.objects);
       const hits = raycaster.intersectObjects(allObjects, true);
@@ -1211,5 +1236,61 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return <div ref={mountRef} style={{ width: "100%", height: "100%" }} />;
+  // Resolve info panel content from state
+  const infoPanelContent = (() => {
+    if (!infoPanel) return null;
+    if (infoPanel.kind === "attraction") {
+      const a = attractionsRef.current.find(a => a.id === infoPanel.id);
+      if (!a) return null;
+      const entry = CATALOG[a.type];
+      return { emoji: entry.emoji, name: entry.name, nameEn: entry.nameEn, cost: entry.cost, visitors: entry.visitors, maintenance: entry.maintenance };
+    } else {
+      const s = shopsRef.current.find(s => s.id === infoPanel.id);
+      if (!s) return null;
+      const entry = SHOP_CATALOG[s.type];
+      return { emoji: entry.emoji, name: entry.name, nameEn: entry.nameEn, cost: entry.cost, visitors: null, revenueRate: entry.revenueRate, maintenance: entry.maintenance };
+    }
+  })();
+
+  return (
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <div ref={mountRef} style={{ width: "100%", height: "100%" }} />
+      {infoPanel && infoPanelContent && (
+        <div
+          onClick={() => setInfoPanel(null)}
+          style={{
+            position: "absolute",
+            left: Math.min(infoPanel.screenX + 10, window.innerWidth - 180),
+            top: Math.max(infoPanel.screenY - 80, 8),
+            background: "rgba(0,0,0,0.82)",
+            color: "#fff",
+            borderRadius: "10px",
+            padding: "10px 14px",
+            fontSize: "0.78rem",
+            zIndex: 20,
+            backdropFilter: "blur(6px)",
+            border: "1px solid rgba(255,255,255,0.15)",
+            pointerEvents: "auto",
+            minWidth: "140px",
+            cursor: "pointer",
+          }}
+        >
+          <div style={{ fontWeight: 800, fontSize: "0.9rem", marginBottom: "6px" }}>
+            {infoPanelContent.emoji} {infoPanelContent.name}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px", opacity: 0.85 }}>
+            <div>💰 ${infoPanelContent.cost.toLocaleString()}</div>
+            {infoPanelContent.visitors != null && (
+              <div style={{ color: "#7dffb3" }}>👥 +{infoPanelContent.visitors} 人</div>
+            )}
+            {(infoPanelContent as { revenueRate?: number }).revenueRate != null && (
+              <div style={{ color: "#7dffb3" }}>💹 +{(infoPanelContent as { revenueRate: number }).revenueRate}/人</div>
+            )}
+            <div style={{ color: "#ff7d7d" }}>🔧 ${infoPanelContent.maintenance}/tick</div>
+          </div>
+          <div style={{ fontSize: "0.58rem", opacity: 0.3, marginTop: "6px", textAlign: "right" }}>tap to close</div>
+        </div>
+      )}
+    </div>
+  );
 }
