@@ -30,6 +30,42 @@ function makePerson(color: number): THREE.Group {
   return g;
 }
 
+function makeChild(color: number): THREE.Group {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshLambertMaterial({ color });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.28), mat);
+  body.position.y = 0.14;
+  g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.10), mat);
+  head.position.y = 0.38;
+  g.add(head);
+  [-0.05, 0.05].forEach((x, i) => {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.22), mat);
+    leg.position.set(x, -0.04, 0);
+    leg.name = `leg${i}`;
+    g.add(leg);
+  });
+  return g;
+}
+
+function makeFamilyGroup(adultColor: number, childColor: number): THREE.Group {
+  const g = new THREE.Group();
+  const adult1 = makePerson(adultColor);
+  adult1.position.set(-0.22, 0, 0);
+  g.add(adult1);
+  const adult2 = makePerson(adultColor === 0xff9966 ? 0x66aaff : 0xff9966);
+  adult2.position.set(0.22, 0, 0);
+  g.add(adult2);
+  const child = makeChild(childColor);
+  child.position.set(0, 0, 0.28);
+  g.add(child);
+  // Store refs for leg animation
+  g.userData.adult1 = adult1;
+  g.userData.adult2 = adult2;
+  g.userData.child  = child;
+  return g;
+}
+
 function makeCar(bodyColor: number): THREE.Group {
   const g = new THREE.Group();
   const mat = new THREE.MeshLambertMaterial({ color: bodyColor });
@@ -90,6 +126,8 @@ interface AttractionGroupInfo {
   z: number;
 }
 
+export type WeatherType = "sunny" | "cloudy" | "rainy";
+
 interface Props {
   attractions: PlacedAttraction[];
   placingType: AttractionType | null;
@@ -101,9 +139,10 @@ interface Props {
   placingShopType: ShopType | null;
   onPlaceShop: (x: number, z: number) => void;
   onDemolishShop: (id: string) => void;
+  onWeatherChange: (w: WeatherType) => void;
 }
 
-export default function ParkScene({ attractions, placingType, onPlace, onBalloonPop, demolishing, onDemolish, shops, placingShopType, onPlaceShop, onDemolishShop }: Props) {
+export default function ParkScene({ attractions, placingType, onPlace, onBalloonPop, demolishing, onDemolish, shops, placingShopType, onPlaceShop, onDemolishShop, onWeatherChange }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const renderedRef = useRef<Set<string>>(new Set());
@@ -125,6 +164,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
   const onPlaceShopRef = useRef<(x: number, z: number) => void>(onPlaceShop);
   const onDemolishShopRef = useRef<(id: string) => void>(onDemolishShop);
   const shopGroupsRef = useRef<Map<string, AttractionGroupInfo>>(new Map());
+  const onWeatherChangeRef = useRef<(w: WeatherType) => void>(onWeatherChange);
 
   // Sync refs with props each render
   useEffect(() => { placingTypeRef.current = placingType; }, [placingType]);
@@ -135,6 +175,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
   useEffect(() => { onDemolishRef.current = onDemolish; }, [onDemolish]);
   useEffect(() => { shopsRef.current = shops; }, [shops]);
   useEffect(() => { placingShopTypeRef.current = placingShopType; }, [placingShopType]);
+  useEffect(() => { onWeatherChangeRef.current = onWeatherChange; }, [onWeatherChange]);
   useEffect(() => { onPlaceShopRef.current = onPlaceShop; }, [onPlaceShop]);
   useEffect(() => { onDemolishShopRef.current = onDemolishShop; }, [onDemolishShop]);
 
@@ -229,7 +270,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
 
     const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 200);
     const cameraTarget = new THREE.Vector3(0, 4, 0);
-    const cameraRadius = 30;
+    let cameraRadius = 30;
     let cameraTheta = 0;
     let cameraPhi = 1.4;
     camera.position.set(0, 10, 28);
@@ -481,6 +522,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       [w(0, 10.4), w(0, -18), w(4, -18)],
       [w(0, 10.4), w(0, -6),  w(0, -20)],
     ];
+    const childColors = [0xffdd88, 0xff88cc, 0x88ffcc, 0xffaa44, 0xaaccff];
     interface PersonData {
       group: THREE.Group;
       waypoints: THREE.Vector3[];
@@ -488,9 +530,11 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       t: number;
       dir: 1 | -1;
       speed: number;
+      isFamily: boolean;
     }
     const people: PersonData[] = [];
-    for (let i = 0; i < 16; i++) {
+    // 12 solo visitors + 4 family groups
+    for (let i = 0; i < 12; i++) {
       const person = makePerson(personColors[i % personColors.length]);
       const waypoints = routes[i % routes.length];
       const segIdx = Math.floor(Math.random() * (waypoints.length - 1));
@@ -500,7 +544,22 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       const to   = dir === 1 ? waypoints[segIdx + 1] : waypoints[segIdx];
       person.position.lerpVectors(from, to, t);
       scene.add(person);
-      people.push({ group: person, waypoints, segIdx, t, dir, speed: 0.035 + Math.random() * 0.02 });
+      people.push({ group: person, waypoints, segIdx, t, dir, speed: 0.035 + Math.random() * 0.02, isFamily: false });
+    }
+    for (let i = 0; i < 4; i++) {
+      const family = makeFamilyGroup(
+        personColors[i % personColors.length],
+        childColors[i % childColors.length]
+      );
+      const waypoints = routes[(i + 4) % routes.length];
+      const segIdx = Math.floor(Math.random() * (waypoints.length - 1));
+      const t = Math.random();
+      const dir: 1 | -1 = Math.random() < 0.5 ? 1 : -1;
+      const from = dir === 1 ? waypoints[segIdx] : waypoints[segIdx + 1];
+      const to   = dir === 1 ? waypoints[segIdx + 1] : waypoints[segIdx];
+      family.position.lerpVectors(from, to, t);
+      scene.add(family);
+      people.push({ group: family, waypoints, segIdx, t, dir, speed: 0.028 + Math.random() * 0.015, isFamily: true });
     }
 
     // Vehicles
@@ -544,6 +603,47 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
       scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.2 })));
     }
+
+    // Weather system
+    type WeatherState = "sunny" | "cloudy" | "rainy";
+    let currentWeather: WeatherState = "sunny";
+    let weatherTimer = 0;
+    let weatherDuration = 15 + Math.random() * 15; // 15-30s in "ticks" (t increments)
+
+    const WEATHER_CLOUD_COUNTS: Record<WeatherState, number> = { sunny: 3, cloudy: 9, rainy: 12 };
+    const pickNextWeather = (): WeatherState => {
+      const r = Math.random();
+      return r < 0.7 ? "sunny" : r < 0.9 ? "cloudy" : "rainy";
+    };
+
+    const applyWeatherClouds = (w: WeatherState) => {
+      clouds.forEach((c, i) => {
+        c.group.visible = i < WEATHER_CLOUD_COUNTS[w];
+      });
+      scene.background = new THREE.Color(
+        w === "rainy" ? 0x8899aa : w === "cloudy" ? 0xa0b8cc : theme.sky
+      );
+      scene.fog = new THREE.Fog(
+        w === "rainy" ? 0x8899aa : w === "cloudy" ? 0xa0b8cc : theme.sky,
+        40, 100
+      );
+    };
+    applyWeatherClouds(currentWeather);
+
+    // Rain particles
+    const RAIN_COUNT = 400;
+    const rainPositions = new Float32Array(RAIN_COUNT * 3);
+    for (let i = 0; i < RAIN_COUNT; i++) {
+      rainPositions[i * 3]     = (Math.random() - 0.5) * 80;
+      rainPositions[i * 3 + 1] = Math.random() * 22 + 2;
+      rainPositions[i * 3 + 2] = (Math.random() - 0.5) * 60;
+    }
+    const rainGeo = new THREE.BufferGeometry();
+    rainGeo.setAttribute("position", new THREE.BufferAttribute(rainPositions, 3));
+    const rainMat = new THREE.PointsMaterial({ color: 0xaaccff, size: 0.18, transparent: true, opacity: 0.55 });
+    const rain = new THREE.Points(rainGeo, rainMat);
+    rain.visible = false;
+    scene.add(rain);
 
     // Burst system
     let bursts: { mesh: THREE.Mesh; vel: THREE.Vector3; life: number }[] = [];
@@ -726,6 +826,13 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       }
     };
 
+    // Zoom via mouse wheel / touchpad pinch
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      cameraRadius = Math.max(12, Math.min(60, cameraRadius + e.deltaY * 0.04));
+    };
+    mount.addEventListener("wheel", onWheel, { passive: false });
+
     mount.style.cursor = "grab";
     mount.addEventListener("pointerdown", onPointerDown);
     mount.addEventListener("pointermove", onPointerMove);
@@ -753,6 +860,30 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
         cameraTarget.z + cameraRadius * Math.sin(cameraPhi) * Math.cos(cameraTheta)
       );
       camera.lookAt(cameraTarget);
+
+      // Weather tick
+      weatherTimer += 0.01;
+      if (weatherTimer >= weatherDuration) {
+        weatherTimer = 0;
+        weatherDuration = 15 + Math.random() * 15;
+        currentWeather = pickNextWeather();
+        applyWeatherClouds(currentWeather);
+        rain.visible = currentWeather === "rainy";
+        onWeatherChangeRef.current(currentWeather);
+      }
+      // Rain animation
+      if (rain.visible) {
+        const pos = rainGeo.attributes.position as THREE.BufferAttribute;
+        for (let i = 0; i < RAIN_COUNT; i++) {
+          pos.array[i * 3 + 1] -= 0.35;
+          if (pos.array[i * 3 + 1] < 0) {
+            pos.array[i * 3 + 1] = 22 + Math.random() * 4;
+            pos.array[i * 3]     = (Math.random() - 0.5) * 80;
+            pos.array[i * 3 + 2] = (Math.random() - 0.5) * 60;
+          }
+        }
+        pos.needsUpdate = true;
+      }
 
       // Run attraction animators
       for (const { fn } of animatorsRef.current) fn(t);
@@ -796,10 +927,19 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
         p.group.position.lerpVectors(from, to, p.t);
         p.group.lookAt(to.clone().setY(p.group.position.y));
         const swing = Math.sin(t * 8) * 0.3;
-        const leg0 = p.group.getObjectByName("leg0");
-        const leg1 = p.group.getObjectByName("leg1");
-        if (leg0) leg0.rotation.x = swing;
-        if (leg1) leg1.rotation.x = -swing;
+        if (p.isFamily) {
+          [p.group.userData.adult1, p.group.userData.adult2, p.group.userData.child].forEach((member: THREE.Group) => {
+            const l0 = member?.getObjectByName("leg0");
+            const l1 = member?.getObjectByName("leg1");
+            if (l0) l0.rotation.x = swing;
+            if (l1) l1.rotation.x = -swing;
+          });
+        } else {
+          const leg0 = p.group.getObjectByName("leg0");
+          const leg1 = p.group.getObjectByName("leg1");
+          if (leg0) leg0.rotation.x = swing;
+          if (leg1) leg1.rotation.x = -swing;
+        }
       });
 
       // Bursts
@@ -828,6 +968,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
     return () => {
       cancelAnimationFrame(frameId);
       window.removeEventListener("resize", onResize);
+      mount.removeEventListener("wheel", onWheel);
       mount.removeEventListener("pointerdown", onPointerDown);
       mount.removeEventListener("pointermove", onPointerMove);
       mount.removeEventListener("pointerup", onPointerUp);

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import ParkScene from "./park/ParkScene";
+import type { WeatherType } from "./park/ParkScene";
 import AttractionPanel from "./park/AttractionPanel";
 import ShopPanel from "./park/ShopPanel";
 import GameHUD from "./park/GameHUD";
@@ -56,6 +57,12 @@ export default function AmusementPark() {
   const [demolishing, setDemolishing] = useState(false);
   const [attrPanelOpen, setAttrPanelOpen] = useState(false);
   const [shopPanelOpen, setShopPanelOpen] = useState(false);
+  const [weather, setWeather] = useState<WeatherType>("sunny");
+  const weatherRef = useRef<WeatherType>("sunny");
+  const handleWeatherChange = useCallback((w: WeatherType) => {
+    setWeather(w);
+    weatherRef.current = w;
+  }, []);
 
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; }, [state]);
@@ -68,8 +75,10 @@ export default function AmusementPark() {
         const attrMaint = s.attractions.reduce((sum, a) => sum + CATALOG[a.type].maintenance, 0);
         const shopMaint = s.shops.reduce((sum, sh) => sum + SHOP_CATALOG[sh.type].maintenance, 0);
         const shopRate  = s.shops.reduce((sum, sh) => sum + SHOP_CATALOG[sh.type].revenueRate, 0);
-        const growBy = capacity > 0 ? Math.max(1, Math.ceil(capacity / VISITOR_FILL_TICKS)) : 0;
-        const newCurrent = Math.min(capacity, s.currentVisitors + growBy);
+        const weatherMult = weatherRef.current === "rainy" ? 0.4 : weatherRef.current === "cloudy" ? 0.85 : 1.0;
+        const effectiveCap = Math.floor(capacity * weatherMult);
+        const growBy = effectiveCap > 0 ? Math.max(1, Math.ceil(effectiveCap / VISITOR_FILL_TICKS)) : 0;
+        const newCurrent = Math.min(effectiveCap, Math.max(0, s.currentVisitors + (weatherRef.current === "rainy" ? -Math.ceil(s.currentVisitors * 0.15) : growBy)));
         // Income = base (1/visitor) + shop revenue — all maintenance
         const income = newCurrent * (1 + shopRate) - attrMaint - shopMaint;
         return {
@@ -182,6 +191,7 @@ export default function AmusementPark() {
         placingShopType={placingShopType}
         onPlaceShop={handlePlaceShop}
         onDemolishShop={handleDemolishShop}
+        onWeatherChange={handleWeatherChange}
       />
 
       {/* Left panel column: Build Attraction → Build Shop → Demolish */}
@@ -241,6 +251,7 @@ export default function AmusementPark() {
         capacity={capacity}
         maintenanceCost={maintenanceCost}
         shopRate={shopRate}
+        weather={weather}
       />
       <WelcomeMessage />
     </div>

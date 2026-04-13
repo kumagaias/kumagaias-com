@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useLang } from "../../contexts/LanguageContext";
+import type { WeatherType } from "./ParkScene";
+
+const WEATHER_ICON: Record<WeatherType, string> = { sunny: "☀️", cloudy: "⛅", rainy: "🌧️" };
 
 interface Props {
   money: number;
@@ -8,9 +11,10 @@ interface Props {
   capacity: number;
   maintenanceCost: number;
   shopRate: number;
+  weather: WeatherType;
 }
 
-export default function GameHUD({ money, currentVisitors, totalVisitors, capacity, maintenanceCost, shopRate }: Props) {
+export default function GameHUD({ money, currentVisitors, totalVisitors, capacity, maintenanceCost, shopRate, weather }: Props) {
   const { lang } = useLang();
   const [expanded, setExpanded] = useState(false);
 
@@ -43,15 +47,11 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
         gap: "1px",
       }}
     >
-      {/* Line 1: Money */}
-      <div style={{ fontSize: "1.2rem", fontWeight: 800, letterSpacing: "0.02em" }}>
-        ${money.toLocaleString()}
+      {/* Line 1: Money + weather */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "6px" }}>
+        <span style={{ fontSize: "0.9rem" }}>{WEATHER_ICON[weather]}</span>
+        <span style={{ fontSize: "1.2rem", fontWeight: 800, letterSpacing: "0.02em" }}>${money.toLocaleString()}</span>
       </div>
-      {expanded && (
-        <div style={sub}>
-          {lang === "jp" ? "手持ち資金" : "balance"}
-        </div>
-      )}
 
       {/* Line 2: Net P&L */}
       <div style={{ fontSize: "0.82rem", fontWeight: 700, color: netColor, marginTop: "3px" }}>
