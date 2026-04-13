@@ -84,11 +84,11 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
       )}
 
       {expanded && (
-        <div style={{ display: "flex", gap: "6px", marginTop: "6px" }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginTop: "6px" }} onClick={(e) => e.stopPropagation()}>
           <button
             onClick={onSave}
             style={{
-              flex: 1, padding: "5px 0", borderRadius: "7px", fontSize: "0.72rem", fontWeight: 700,
+              width: "100%", padding: "6px 0", borderRadius: "7px", fontSize: "0.72rem", fontWeight: 700,
               border: "1px solid rgba(125,255,179,0.4)", background: "rgba(125,255,179,0.14)",
               color: "#7dffb3", cursor: "pointer",
             }}
@@ -98,7 +98,7 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
           <button
             onClick={onRestart}
             style={{
-              flex: 1, padding: "5px 0", borderRadius: "7px", fontSize: "0.72rem", fontWeight: 700,
+              width: "100%", padding: "6px 0", borderRadius: "7px", fontSize: "0.72rem", fontWeight: 700,
               border: "1px solid rgba(255,125,125,0.4)", background: "rgba(255,80,30,0.14)",
               color: "#ff9977", cursor: "pointer",
             }}
