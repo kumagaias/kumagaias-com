@@ -278,43 +278,148 @@ function buildMerryGoRound(container: THREE.Object3D, x: number, z: number): Bui
 }
 
 function buildShootingGallery(container: THREE.Object3D, x: number, z: number): BuildResult {
-  const shootGroup = new THREE.Group();
-  shootGroup.position.set(x, 0, z);
-  const boothMat = new THREE.MeshLambertMaterial({ color: 0xcc8844 });
-  const backWall = new THREE.Mesh(new THREE.BoxGeometry(3, 2.5, 0.2), boothMat);
-  backWall.position.set(0, 1.25, 0);
-  shootGroup.add(backWall);
-  const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.5, 1.5), boothMat);
-  leftWall.position.set(-1.5, 1.25, -0.7);
-  shootGroup.add(leftWall);
-  const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.5, 1.5), boothMat);
-  rightWall.position.set(1.5, 1.25, -0.7);
-  shootGroup.add(rightWall);
-  const targetColors = [0xff2222, 0x2222ff, 0x22ff22, 0xffff22, 0xff22ff];
-  const targets: { mesh: THREE.Mesh; fallen: boolean; resetT: number }[] = [];
-  for (let i = 0; i < 5; i++) {
-    const target = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.2, 0.2, 0.08, 16),
-      new THREE.MeshLambertMaterial({ color: targetColors[i] })
-    );
-    target.position.set(-1 + i * 0.5, 1.8, -0.1);
-    shootGroup.add(target);
-    targets.push({ mesh: target, fallen: false, resetT: 0 });
-  }
-  container.add(shootGroup);
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
 
+  // Floor platform
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(5, 0.12, 3.2),
+    new THREE.MeshLambertMaterial({ color: 0xd4a96a })), { position: { set(_x: number, _y: number, _z: number) { (this as unknown as THREE.Mesh).position.set(_x, _y, _z); return this; } } }));
+  const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(5, 0.12, 3.2), new THREE.MeshLambertMaterial({ color: 0xd4a96a }));
+  floorMesh.position.set(0, 0.06, -0.6);
+  g.add(floorMesh);
+
+  // Back wall
+  const wallMat = new THREE.MeshLambertMaterial({ color: 0x8b5c2a });
+  const backWall = new THREE.Mesh(new THREE.BoxGeometry(5, 3, 0.2), wallMat);
+  backWall.position.set(0, 1.5, -2.1);
+  g.add(backWall);
+
+  // Side walls
+  for (const sx of [-2.4, 2.4]) {
+    const sw = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3, 3.2), wallMat);
+    sw.position.set(sx, 1.5, -0.6);
+    g.add(sw);
+  }
+
+  // Counter / shelf
+  const counterMat = new THREE.MeshLambertMaterial({ color: 0xf0c070 });
+  const counter = new THREE.Mesh(new THREE.BoxGeometry(5, 0.15, 0.5), counterMat);
+  counter.position.set(0, 1.05, 0.9);
+  g.add(counter);
+
+  // Counter front panel
+  const frontPanel = new THREE.Mesh(new THREE.BoxGeometry(5, 1.05, 0.12), wallMat);
+  frontPanel.position.set(0, 0.52, 1.1);
+  g.add(frontPanel);
+
+  // Front support posts
+  const postMat = new THREE.MeshLambertMaterial({ color: 0x6b3a1f });
+  for (const sx of [-2.3, 2.3]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.22, 3.4, 0.22), postMat);
+    post.position.set(sx, 1.7, 1.0);
+    g.add(post);
+  }
+
+  // Striped awning (alternating red/white strips)
+  const awningColors = [0xff3333, 0xffffff, 0xff3333, 0xffffff, 0xff3333];
+  for (let i = 0; i < 5; i++) {
+    const strip = new THREE.Mesh(
+      new THREE.BoxGeometry(1.0, 0.08, 1.6),
+      new THREE.MeshLambertMaterial({ color: awningColors[i] })
+    );
+    strip.position.set(-2.0 + i * 1.0, 3.35, 0.1);
+    strip.rotation.x = 0.28;
+    g.add(strip);
+  }
+  // Awning valance (fringe edge)
+  const valanceMat = new THREE.MeshLambertMaterial({ color: 0xff3333 });
+  for (let i = 0; i < 10; i++) {
+    const fringe = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.3, 0.06), valanceMat);
+    fringe.position.set(-2.25 + i * 0.5, 2.95, 0.88);
+    g.add(fringe);
+  }
+
+  // Sign board above awning
+  const signMat = new THREE.MeshLambertMaterial({ color: 0xffee22 });
+  const sign = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.55, 0.18), signMat);
+  sign.position.set(0, 3.65, 0.85);
+  g.add(sign);
+  // Sign decorative dots
+  for (let i = 0; i < 5; i++) {
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8),
+      new THREE.MeshLambertMaterial({ color: [0xff3333, 0x33aaff, 0x33dd33, 0xff9900, 0xff33aa][i] }));
+    dot.position.set(-1.6 + i * 0.8, 3.65, 0.96);
+    g.add(dot);
+  }
+
+  // Target shelf on back wall (two rows)
+  const shelfMat = new THREE.MeshLambertMaterial({ color: 0xbb8833 });
+  for (const sy of [1.6, 2.2]) {
+    const shelf = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.08, 0.28), shelfMat);
+    shelf.position.set(0, sy, -2.0);
+    g.add(shelf);
+  }
+
+  // Tin can targets (2 rows × 7 cans)
+  const canColors = [0xff3333, 0x3388ff, 0x33cc33, 0xffaa00, 0xcc33cc, 0x33dddd, 0xff6666];
+  const targets: { mesh: THREE.Mesh; fallen: boolean; resetT: number; baseY: number }[] = [];
+  for (let row = 0; row < 2; row++) {
+    const sy = 1.7 + row * 0.6;
+    for (let col = 0; col < 7; col++) {
+      const can = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.14, 0.14, 0.28, 12),
+        new THREE.MeshLambertMaterial({ color: canColors[(col + row * 3) % canColors.length] })
+      );
+      can.position.set(-1.5 + col * 0.5, sy, -1.95);
+      g.add(can);
+      targets.push({ mesh: can, fallen: false, resetT: 0, baseY: sy });
+    }
+  }
+
+  // Prize stuffed animals on back wall (colorful rounded boxes)
+  const prizeColors = [0xff88aa, 0x88aaff, 0xffdd44, 0xaaffaa];
+  for (let i = 0; i < 4; i++) {
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8),
+      new THREE.MeshLambertMaterial({ color: prizeColors[i] }));
+    body.position.set(-1.5 + i * 1.0, 2.7, -2.0);
+    g.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8),
+      new THREE.MeshLambertMaterial({ color: prizeColors[i] }));
+    head.position.set(-1.5 + i * 1.0, 2.97, -2.0);
+    g.add(head);
+  }
+
+  // Hanging star decorations (between posts)
+  const starMat = new THREE.MeshLambertMaterial({ color: 0xffee00 });
+  for (let i = 0; i < 4; i++) {
+    const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.14), starMat);
+    star.position.set(-1.5 + i * 1.0, 3.1, 0.95);
+    g.add(star);
+  }
+
+  container.add(g);
+
+  let t = 0;
   const animator: Animator = () => {
+    t += 0.04;
+    // Star decorations spin slowly
+    g.children.forEach(c => {
+      if (c instanceof THREE.Mesh && (c.geometry as THREE.OctahedronGeometry).type === "OctahedronGeometry") {
+        c.rotation.y = t * 1.2;
+        c.position.y = 3.1 + Math.sin(t + c.position.x) * 0.04;
+      }
+    });
+    // Fallen cans
     targets.forEach((tgt) => {
       if (tgt.fallen) {
-        tgt.mesh.rotation.x = Math.PI / 2;
+        tgt.mesh.rotation.z = Math.PI / 2;
         tgt.resetT -= 0.016;
-        if (tgt.resetT <= 0) { tgt.fallen = false; tgt.mesh.rotation.x = 0; }
+        if (tgt.resetT <= 0) { tgt.fallen = false; tgt.mesh.rotation.z = 0; }
       }
     });
   };
 
-  const targetMeshes = targets.map(t => t.mesh);
-  return { animator, clickTargets: targetMeshes, burstColor: 0xffff00 };
+  return { animator, clickTargets: targets.map(t => t.mesh), burstColor: 0xffee00 };
 }
 
 function buildMiniTrain(container: THREE.Object3D, x: number, z: number): BuildResult {
