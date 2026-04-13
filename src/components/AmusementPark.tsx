@@ -277,6 +277,7 @@ export default function AmusementPark() {
         onWeatherChange={handleWeatherChange}
         celebrateTriggerRef={celebrateTriggerRef}
         currentVisitors={currentVisitors}
+        capacity={capacity}
       />
 
       {/* Left panel column: Build Attraction → Build Shop → Demolish */}

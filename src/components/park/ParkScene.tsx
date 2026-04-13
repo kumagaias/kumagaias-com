@@ -143,9 +143,10 @@ interface Props {
   onWeatherChange: (w: WeatherType) => void;
   celebrateTriggerRef: React.MutableRefObject<((level?: number) => void) | null>;
   currentVisitors: number;
+  capacity: number;
 }
 
-export default function ParkScene({ attractions, placingType, onPlace, onBalloonPop, demolishing, onDemolish, shops, placingShopType, onPlaceShop, onDemolishShop, onWeatherChange, celebrateTriggerRef, currentVisitors }: Props) {
+export default function ParkScene({ attractions, placingType, onPlace, onBalloonPop, demolishing, onDemolish, shops, placingShopType, onPlaceShop, onDemolishShop, onWeatherChange, celebrateTriggerRef, currentVisitors, capacity }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const renderedRef = useRef<Set<string>>(new Set());
@@ -171,6 +172,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
   const onWeatherChangeRef = useRef<(w: WeatherType) => void>(onWeatherChange);
   const celebrateRef = useRef<(() => void) | null>(null);
   const currentVisitorsRef = useRef(currentVisitors);
+  const capacityRef = useRef(capacity);
 
   // Sync refs with props each render
   useEffect(() => { placingTypeRef.current = placingType; }, [placingType]);
@@ -183,6 +185,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
   useEffect(() => { placingShopTypeRef.current = placingShopType; }, [placingShopType]);
   useEffect(() => { onWeatherChangeRef.current = onWeatherChange; }, [onWeatherChange]);
   useEffect(() => { currentVisitorsRef.current = currentVisitors; }, [currentVisitors]);
+  useEffect(() => { capacityRef.current = capacity; }, [capacity]);
   useEffect(() => { onPlaceShopRef.current = onPlaceShop; }, [onPlaceShop]);
   useEffect(() => { onDemolishShopRef.current = onDemolishShop; }, [onDemolishShop]);
 
@@ -384,8 +387,8 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
         pathMeshesRef.current.set(_currentPathId, arr);
       }
     }
-    // Central avenue — extends deep into the park
-    addPath(0, 10.4, 0, -22, 2.2);
+    // Central avenue — extends deep into the park and out through the gate to the sidewalk
+    addPath(0, 12.8, 0, -22, 2.2);
 
     // Branch path with obstacle avoidance
     function addBranchPath(destX: number, destZ: number, skipId: string) {
@@ -1062,7 +1065,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       });
 
       // Manage people entry/exit based on current visitor count
-      const targetActive = Math.min(people.length, Math.round((currentVisitorsRef.current / Math.max(1, 80)) * people.length));
+      const targetActive = Math.min(people.length, Math.round((currentVisitorsRef.current / Math.max(1, capacityRef.current)) * people.length));
       const activeCount = people.filter(p => p.active).length;
       if (activeCount < targetActive) {
         // Activate idle people — they enter through the gate
