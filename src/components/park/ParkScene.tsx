@@ -226,6 +226,11 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       attractionGroupsRef.current.set(a.id, { group, x: a.x, z: a.z });
       animatorsRef.current.push({ id: a.id, fn: result.animator });
       const { clickTargets, burstColor } = result;
+      if (getTimeOfDay() === "night") {
+        const pl = new THREE.PointLight(burstColor, 1.8, 14);
+        pl.position.set(0, 3.5, 0);
+        group.add(pl);
+      }
       clickablesRef.current.push({
         id: a.id,
         objects: clickTargets,
@@ -261,6 +266,11 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       const result = buildShop(group, s);
       shopGroupsRef.current.set(s.id, { group, x: s.x, z: s.z });
       animatorsRef.current.push({ id: s.id, fn: result.animator });
+      if (getTimeOfDay() === "night") {
+        const pl = new THREE.PointLight(result.burstColor, 1.2, 10);
+        pl.position.set(0, 2.5, 0);
+        group.add(pl);
+      }
       clickablesRef.current.push({
         id: s.id,
         objects: result.clickTargets,
@@ -904,6 +914,11 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       attractionGroupsRef.current.set(a.id, { group, x: a.x, z: a.z });
       animatorsRef.current.push({ id: a.id, fn: result.animator });
       const { clickTargets, burstColor } = result;
+      if (isNight) {
+        const pl = new THREE.PointLight(burstColor, 1.8, 14);
+        pl.position.set(0, 3.5, 0);
+        group.add(pl);
+      }
       clickablesRef.current.push({
         id: a.id,
         objects: clickTargets,
