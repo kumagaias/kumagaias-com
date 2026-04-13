@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
-import { useLang } from "../../contexts/LanguageContext";
 
 export default function WelcomeMessage() {
   const [phase, setPhase] = useState<"visible" | "fading" | "gone">("visible");
-  const { lang } = useLang();
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase("fading"), 3000);
@@ -39,16 +37,6 @@ export default function WelcomeMessage() {
       >
         kumagaias.com
       </h1>
-      <p
-        style={{
-          color: "rgba(255,255,255,0.88)",
-          textShadow: "0 1px 8px rgba(0,0,0,0.5)",
-          margin: "8px 0 0",
-          fontSize: "clamp(0.85rem, 1.8vw, 1.15rem)",
-        }}
-      >
-        {lang === "jp" ? "ポートフォリオへようこそ！" : "Welcome to my portfolio!"}
-      </p>
     </div>
   );
 }
