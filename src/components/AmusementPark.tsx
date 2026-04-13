@@ -214,7 +214,7 @@ export default function AmusementPark() {
               cursor: "pointer",
               backdropFilter: "blur(6px)",
               textAlign: "left",
-              width: "160px",
+              width: "190px",
             }}
           >
             🚧 {lang === "jp" ? "取り壊す" : "Demolish"}

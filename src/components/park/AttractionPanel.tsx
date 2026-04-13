@@ -25,7 +25,7 @@ export default function AttractionPanel({ money, placingType, onSelect, attracti
     whiteSpace: "nowrap",
     flexShrink: 0,
     textAlign: "left",
-    width: "160px",
+    width: "190px",
   };
 
   return (
