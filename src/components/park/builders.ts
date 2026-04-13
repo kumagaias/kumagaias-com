@@ -63,30 +63,96 @@ function buildFerrisWheel(container: THREE.Object3D, x: number, z: number): Buil
 function buildRollerCoaster(container: THREE.Object3D, x: number, z: number): BuildResult {
   const coasterGroup = new THREE.Group();
   coasterGroup.position.set(x, 0, z);
-  const trackMat = new THREE.MeshLambertMaterial({ color: 0xaaaaaa });
-  const points: THREE.Vector3[] = [];
-  for (let i = 0; i <= 60; i++) {
-    const t2 = (i / 60) * Math.PI * 2;
-    points.push(new THREE.Vector3(
-      Math.cos(t2) * 5,
-      2 + Math.sin(t2 * 2) * 2 + (t2 < Math.PI ? t2 * 0.5 : (Math.PI * 2 - t2) * 0.5),
-      Math.sin(t2) * 3
-    ));
+
+  const trackMat   = new THREE.MeshLambertMaterial({ color: 0xdddddd });
+  const supportMat = new THREE.MeshLambertMaterial({ color: 0xf5a623 });
+  const stationMat = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+  const roofMat    = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
+
+  // ── Track curve (bigger, more dramatic) ──────────────────────────────
+  const pts: THREE.Vector3[] = [];
+  const N = 80;
+  for (let i = 0; i <= N; i++) {
+    const u = (i / N) * Math.PI * 2;
+    // Oval footprint with hills, a tall lift, and a tight loop section
+    const rx = 6, rz = 4;
+    const px = Math.cos(u) * rx;
+    const pz = Math.sin(u) * rz;
+    // Height: big lift hill at u≈0, sharp drop, small bunny hills
+    const lift   = Math.max(0, Math.cos(u) * 3.5);            // tall hill at front
+    const bunny  = Math.sin(u * 3) * 0.8;                     // 3 bunny hills
+    const loop   = u > Math.PI * 0.8 && u < Math.PI * 1.2     // loop section
+                   ? Math.sin((u - Math.PI * 0.8) / 0.4 * Math.PI) * 3.5
+                   : 0;
+    pts.push(new THREE.Vector3(px, 1.2 + lift + bunny + loop, pz));
   }
-  const curve = new THREE.CatmullRomCurve3(points, true);
-  coasterGroup.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 120, 0.08, 6, true), trackMat));
-  const cart = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.35, 0.4), new THREE.MeshLambertMaterial({ color: 0xff3300 }));
-  coasterGroup.add(cart);
+  const curve = new THREE.CatmullRomCurve3(pts, true);
+  coasterGroup.add(new THREE.Mesh(
+    new THREE.TubeGeometry(curve, 200, 0.09, 6, true),
+    trackMat
+  ));
+
+  // ── Support pillars ───────────────────────────────────────────────────
+  const pillarCount = 28;
+  for (let i = 0; i < pillarCount; i++) {
+    const pt = curve.getPoint(i / pillarCount);
+    if (pt.y < 1.5) continue; // skip low sections (already near ground)
+    const h = pt.y - 0.05;
+    const pillar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.07, 0.1, h, 5),
+      supportMat
+    );
+    pillar.position.set(pt.x, h / 2, pt.z);
+    coasterGroup.add(pillar);
+  }
+
+  // ── Station platform ──────────────────────────────────────────────────
+  const platform = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.2, 1.4), stationMat);
+  platform.position.set(-5.5, 0.1, 0);
+  coasterGroup.add(platform);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.12, 1.6), roofMat);
+  roof.position.set(-5.5, 1.5, 0);
+  coasterGroup.add(roof);
+  // Roof supports
+  for (const [sx, sz] of [[-6.9, -0.6], [-6.9, 0.6], [-4.1, -0.6], [-4.1, 0.6]] as [number, number][]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.4, 5), supportMat);
+    post.position.set(sx, 0.7, sz);
+    coasterGroup.add(post);
+  }
+
+  // ── Train: 3 carts ────────────────────────────────────────────────────
+  const cartOffsets = [0, 0.035, 0.07]; // spacing along curve
+  const cartColors  = [0xff2200, 0xff5500, 0xff8800];
+  const carts = cartOffsets.map((offset, i) => {
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(0.7, 0.38, 0.45),
+      new THREE.MeshLambertMaterial({ color: cartColors[i] })
+    );
+    // Windshield
+    const glass = new THREE.Mesh(
+      new THREE.BoxGeometry(0.25, 0.22, 0.44),
+      new THREE.MeshLambertMaterial({ color: 0x88ccff, transparent: true, opacity: 0.7 })
+    );
+    glass.position.set(0.22, 0.1, 0);
+    body.add(glass);
+    coasterGroup.add(body);
+    return { body, offset };
+  });
+
   container.add(coasterGroup);
 
+  const speed = 0.032;
   const animator: Animator = (t) => {
-    const cpos = curve.getPoint((t * 0.05) % 1);
-    const tangent = curve.getTangent((t * 0.05) % 1);
-    cart.position.copy(cpos);
-    cart.lookAt(cpos.clone().add(tangent));
+    carts.forEach(({ body, offset }) => {
+      const u = ((t * speed) + offset) % 1;
+      const pos     = curve.getPoint(u);
+      const tangent = curve.getTangent(u);
+      body.position.copy(pos);
+      body.lookAt(pos.clone().add(tangent));
+    });
   };
 
-  return { animator, clickTargets: [cart], burstColor: 0xff3300 };
+  return { animator, clickTargets: carts.map(c => c.body), burstColor: 0xff4400 };
 }
 
 function buildCoffeeCups(container: THREE.Object3D, x: number, z: number): BuildResult {

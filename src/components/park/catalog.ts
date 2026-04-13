@@ -13,8 +13,8 @@ export interface CatalogEntry {
 // At full capacity, net income = visitors - maintenance.
 // During ramp-up (first ~5 ticks), maintenance can exceed income → manage cash flow!
 export const CATALOG: Record<AttractionType, CatalogEntry> = {
-  ferrisWheel:     { name: "観覧車",             nameEn: "Ferris Wheel",     cost: 400, visitors: 50, maintenance: 18, emoji: "🎡" },
-  rollerCoaster:   { name: "ジェットコースター", nameEn: "Roller Coaster",   cost: 350, visitors: 45, maintenance: 16, emoji: "🎢" },
+  ferrisWheel:     { name: "観覧車",             nameEn: "Ferris Wheel",     cost: 550, visitors: 50, maintenance: 20, emoji: "🎡" },
+  rollerCoaster:   { name: "ジェットコースター", nameEn: "Roller Coaster",   cost: 700, visitors: 60, maintenance: 26, emoji: "🎢" },
   dropTower:       { name: "ドロップタワー",     nameEn: "Drop Tower",       cost: 300, visitors: 40, maintenance: 14, emoji: "🗼" },
   miniTrain:       { name: "ミニ電車",           nameEn: "Mini Train",       cost: 250, visitors: 30, maintenance: 10, emoji: "🚂" },
   swingCarousel:   { name: "スイング",           nameEn: "Swing Carousel",   cost: 220, visitors: 28, maintenance:  9, emoji: "🎪" },
