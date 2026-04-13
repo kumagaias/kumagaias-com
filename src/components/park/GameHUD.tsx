@@ -55,7 +55,7 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
 
       {/* Line 2: Net P&L */}
       <div style={{ fontSize: "0.82rem", fontWeight: 700, color: netColor, marginTop: "3px" }}>
-        {netPerTick >= 0 ? "+" : ""}{netPerTick}
+        💰 {netPerTick >= 0 ? "+" : ""}${netPerTick}
       </div>
       {expanded && (
         <div style={{ ...sub, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
@@ -66,7 +66,7 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
 
       {/* Line 3: Current guests */}
       <div style={{ fontSize: "0.82rem", marginTop: "3px" }}>
-        {currentVisitors.toLocaleString()}{lang === "jp" ? "人" : " guests"}
+        👥 {currentVisitors.toLocaleString()}{lang === "jp" ? "人" : " guests"}
       </div>
       {expanded && (
         <div style={sub}>

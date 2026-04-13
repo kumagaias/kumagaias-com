@@ -427,6 +427,37 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       });
     }
 
+    // Clouds — drift left to right, semi-transparent so park shows through
+    const cloudMat = new THREE.MeshLambertMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.78,
+      depthWrite: false,
+    });
+    type CloudEntry = { group: THREE.Group; speed: number };
+    const clouds: CloudEntry[] = [];
+    for (let ci = 0; ci < 9; ci++) {
+      const group = new THREE.Group();
+      const puffCount = 4 + Math.floor(Math.random() * 4);
+      for (let p = 0; p < puffCount; p++) {
+        const r = 1.8 + Math.random() * 2.2;
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), cloudMat);
+        puff.position.set(
+          (Math.random() - 0.5) * 6,
+          (Math.random() - 0.5) * 1.6,
+          (Math.random() - 0.5) * 3.5
+        );
+        group.add(puff);
+      }
+      group.position.set(
+        -70 + Math.random() * 140,
+        14 + Math.random() * 6,
+        -15 + Math.random() * 22
+      );
+      scene.add(group);
+      clouds.push({ group, speed: 0.025 + Math.random() * 0.025 });
+    }
+
     // People — waypoint-based path following
     const personColors = [0xff9966, 0x66aaff, 0xffcc44, 0xcc66ff, 0x44ddaa, 0xff6644, 0xaaddff, 0xffaacc, 0xff4488, 0x88ff44, 0x44ffee, 0xffaa66];
     const w = (x: number, z: number) => new THREE.Vector3(x, 0, z);
@@ -729,6 +760,12 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
         v.group.position.x += v.speed;
         if (v.speed > 0 && v.group.position.x > v.resetTo) v.group.position.x = v.resetFrom;
         else if (v.speed < 0 && v.group.position.x < v.resetTo) v.group.position.x = v.resetFrom;
+      });
+
+      // Clouds — drift left to right, wrap around
+      clouds.forEach((c) => {
+        c.group.position.x += c.speed;
+        if (c.group.position.x > 75) c.group.position.x = -75;
       });
 
       // Balloons
