@@ -6,12 +6,9 @@ import { buildAttraction, type Animator } from "./builders";
 import { buildShop } from "./shopBuilders";
 import { CATALOG, SHOP_CATALOG } from "./catalog";
 
-function getTimeOfDay(): "day" | "night" {
-  const hour = new Date().getHours();
-  return hour >= 6 && hour < 18 ? "day" : "night";
-}
-
-const DAY = { sky: 0x87ceeb, ground: 0x90ee90, light: 0xffffff, ambient: 0xffd580 };
+// 10-minute day/night cycle (600 s). t increments ~0.01/frame at 60fps → 0.6/s → CYCLE=360 frames/cycle
+const CYCLE_T = 360;
+const DAY   = { sky: 0x87ceeb, ground: 0x90ee90, light: 0xffffff, ambient: 0xffd580 };
 const NIGHT = { sky: 0x0a0a2e, ground: 0x2d4a1e, light: 0x8888ff, ambient: 0x222244 };
 
 function makePerson(color: number): THREE.Group {
@@ -174,6 +171,10 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
   const celebrateRef = useRef<(() => void) | null>(null);
   const currentVisitorsRef = useRef(currentVisitors);
   const capacityRef = useRef(capacity);
+  /** All PointLights that should turn on at night (lamps + attractions + shops). */
+  const nightLightsRef = useRef<THREE.PointLight[]>([]);
+  /** All materials with night emissive (from builders). emissiveIntensity scaled by nightFactor. */
+  const nightMatsRef = useRef<THREE.MeshLambertMaterial[]>([]);
 
   type InfoPanel = { id: string; kind: "attraction" | "shop"; screenX: number; screenY: number };
   const [infoPanel, setInfoPanel] = useState<InfoPanel | null>(null);
@@ -226,11 +227,13 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       attractionGroupsRef.current.set(a.id, { group, x: a.x, z: a.z });
       animatorsRef.current.push({ id: a.id, fn: result.animator });
       const { clickTargets, burstColor } = result;
-      if (getTimeOfDay() === "night") {
-        const pl = new THREE.PointLight(burstColor, 2.0, 7);
-        pl.position.set(0, 3.5, 0);
-        group.add(pl);
-      }
+      // Night PointLight — intensity starts at 0, updated each frame by cycle
+      const pl = new THREE.PointLight(burstColor, 0, 7);
+      pl.userData.maxI = 2.0;
+      pl.position.set(0, 3.5, 0);
+      group.add(pl);
+      nightLightsRef.current.push(pl);
+      nightMatsRef.current.push(...result.nightMaterials);
       clickablesRef.current.push({
         id: a.id,
         objects: clickTargets,
@@ -266,11 +269,12 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       const result = buildShop(group, s);
       shopGroupsRef.current.set(s.id, { group, x: s.x, z: s.z });
       animatorsRef.current.push({ id: s.id, fn: result.animator });
-      if (getTimeOfDay() === "night") {
-        const pl = new THREE.PointLight(result.burstColor, 1.5, 6);
-        pl.position.set(0, 2.5, 0);
-        group.add(pl);
-      }
+      const spl = new THREE.PointLight(result.burstColor, 0, 6);
+      spl.userData.maxI = 1.5;
+      spl.position.set(0, 2.5, 0);
+      group.add(spl);
+      nightLightsRef.current.push(spl);
+      nightMatsRef.current.push(...result.nightMaterials);
       clickablesRef.current.push({
         id: s.id,
         objects: result.clickTargets,
@@ -284,8 +288,8 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
     const mount = mountRef.current!;
     const W = mount.clientWidth;
     const H = mount.clientHeight;
-    const theme = getTimeOfDay() === "day" ? DAY : NIGHT;
-    const isNight = getTimeOfDay() === "night";
+    // Start in day; the animation loop drives the cycle from here
+    const isNight = false;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(W, H);
@@ -293,8 +297,9 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
     mount.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(theme.sky);
-    scene.fog = new THREE.Fog(theme.sky, 40, 100);
+    const skyCurrent = new THREE.Color(DAY.sky);
+    scene.background = skyCurrent;
+    scene.fog = new THREE.Fog(skyCurrent, 40, 100);
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 200);
@@ -305,16 +310,55 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
     camera.position.set(0, 10, 28);
     camera.lookAt(cameraTarget);
 
-    scene.add(new THREE.AmbientLight(theme.ambient, 0.8));
-    const sun = new THREE.DirectionalLight(theme.light, 1.2);
-    sun.position.set(10, 20, 10);
-    sun.castShadow = true;
-    scene.add(sun);
+    const ambientLight = new THREE.AmbientLight(DAY.ambient, 0.8);
+    scene.add(ambientLight);
+    const sunLight = new THREE.DirectionalLight(DAY.light, 1.2);
+    sunLight.position.set(10, 20, 10);
+    sunLight.castShadow = true;
+    scene.add(sunLight);
+
+    // Celestial bodies — sun and moon arc across the sky
+    const sunMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(1.6, 12, 12),
+      new THREE.MeshBasicMaterial({ color: 0xfff5c0 }),
+    );
+    scene.add(sunMesh);
+    const moonMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(1.1, 10, 10),
+      new THREE.MeshBasicMaterial({ color: 0xdde8ff }),
+    );
+    scene.add(moonMesh);
+
+    // Stars — always in scene, opacity controlled by nightFactor
+    const starGeo = new THREE.BufferGeometry();
+    const starPos = new Float32Array(600);
+    for (let i = 0; i < 600; i += 3) {
+      starPos[i]     = (Math.random() - 0.5) * 100;
+      starPos[i + 1] = Math.random() * 40 + 10;
+      starPos[i + 2] = (Math.random() - 0.5) * 100;
+    }
+    starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
+    const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.22, transparent: true, opacity: 0 });
+    const stars = new THREE.Points(starGeo, starMat);
+    scene.add(stars);
+
+    // Pre-computed colors for smooth lerp
+    const cDaySky     = new THREE.Color(DAY.sky);
+    const cNightSky   = new THREE.Color(NIGHT.sky);
+    const cDayGround  = new THREE.Color(DAY.ground);
+    const cNightGround = new THREE.Color(NIGHT.ground);
+    const cDayAmb     = new THREE.Color(DAY.ambient);
+    const cNightAmb   = new THREE.Color(NIGHT.ambient);
+    const cDayLight   = new THREE.Color(DAY.light);
+    const cNightLight = new THREE.Color(NIGHT.light);
+    const cRainSky    = new THREE.Color(0x8899aa);
+    const cCloudSky   = new THREE.Color(0xa0b8cc);
 
     // Ground
+    const groundMat = new THREE.MeshLambertMaterial({ color: DAY.ground });
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(200, 200),
-      new THREE.MeshLambertMaterial({ color: theme.ground })
+      groundMat,
     );
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
@@ -655,52 +699,45 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
 
     // Street lamps — along roadside and park central avenue
     {
-      const poleMat = new THREE.MeshLambertMaterial({ color: 0x445566 });
-      const lampColor = isNight ? 0xffee99 : 0xddeeff;
-      const lampMat = new THREE.MeshLambertMaterial({ color: lampColor, emissive: isNight ? 0xffcc44 : 0x000000, emissiveIntensity: isNight ? 1.0 : 0 });
-      const armMat  = new THREE.MeshLambertMaterial({ color: 0x334455 });
+      const poleMat  = new THREE.MeshLambertMaterial({ color: 0x445566 });
+      const lampMat  = new THREE.MeshLambertMaterial({ color: 0xffee99, emissive: 0xffcc44, emissiveIntensity: 0 });
+      lampMat.userData.ni = 1.0;
+      nightMatsRef.current.push(lampMat);
+      const armMat   = new THREE.MeshLambertMaterial({ color: 0x334455 });
+      const glowMat  = new THREE.MeshBasicMaterial({ color: 0xffee88, transparent: true, opacity: 0 });
 
       const addLamp = (lx: number, lz: number, facingLeft = false) => {
         const lp = new THREE.Group();
-        // Pole
         const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 4.2, 8), poleMat);
         pole.position.y = 2.1;
         lp.add(pole);
-        // Arm
         const arm = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.07, 0.07), armMat);
         arm.position.set(facingLeft ? -0.4 : 0.4, 4.1, 0);
         lp.add(arm);
-        // Lamp head
         const head = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.14, 0.22, 10), lampMat);
         head.position.set(facingLeft ? -0.8 : 0.8, 4.0, 0);
         lp.add(head);
-        // Glow sphere (night only)
-        if (isNight) {
-          const glow = new THREE.Mesh(
-            new THREE.SphereGeometry(0.18, 8, 8),
-            new THREE.MeshBasicMaterial({ color: 0xffee88, transparent: true, opacity: 0.6 })
-          );
-          glow.position.copy(head.position);
-          glow.position.y -= 0.1;
-          lp.add(glow);
-          // Point light for nearby illumination
-          const pl = new THREE.PointLight(0xffdd88, isNight ? 1.2 : 0, 6);
-          pl.position.copy(glow.position);
-          lp.add(pl);
-        }
+        // Glow sphere (always present, opacity driven by nightFactor)
+        const glow = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), glowMat);
+        glow.position.copy(head.position);
+        glow.position.y -= 0.1;
+        lp.add(glow);
+        const pl = new THREE.PointLight(0xffdd88, 0, 6);
+        pl.userData.maxI = 1.2;
+        pl.position.copy(glow.position);
+        lp.add(pl);
+        nightLightsRef.current.push(pl);
         lp.position.set(lx, 0, lz);
         scene.add(lp);
       };
 
-      // Road-side lamps (near sidewalk, both sides), every 10 units
       for (let lx = -30; lx <= 30; lx += 10) {
-        addLamp(lx, 12.2, false);   // near side (park-facing), arm toward road
-        addLamp(lx, 15.8, true);    // far side (road outer), arm toward road
+        addLamp(lx, 12.2, false);
+        addLamp(lx, 15.8, true);
       }
-      // Park avenue lamps (both sides of central path), every 8 units
       for (let lz = 8; lz >= -20; lz -= 8) {
-        addLamp(-1.8, lz, false);   // left side of avenue
-        addLamp( 1.8, lz, true);    // right side of avenue
+        addLamp(-1.8, lz, false);
+        addLamp( 1.8, lz, true);
       }
     }
 
@@ -708,7 +745,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
     type WeatherState = "sunny" | "cloudy" | "rainy";
     let currentWeather: WeatherState = "sunny";
     let weatherTimer = 0;
-    let weatherDuration = 15 + Math.random() * 15; // 15-30s in "ticks" (t increments)
+    let weatherDuration = 15 + Math.random() * 15;
 
     const WEATHER_CLOUD_COUNTS: Record<WeatherState, number> = { sunny: 1, cloudy: 10, rainy: 12 };
     const pickNextWeather = (): WeatherState => {
@@ -716,17 +753,9 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       return r < 0.7 ? "sunny" : r < 0.9 ? "cloudy" : "rainy";
     };
 
+    // Weather only controls cloud visibility now; sky color is blended in the loop
     const applyWeatherClouds = (w: WeatherState) => {
-      clouds.forEach((c, i) => {
-        c.group.visible = i < WEATHER_CLOUD_COUNTS[w];
-      });
-      scene.background = new THREE.Color(
-        w === "rainy" ? 0x8899aa : w === "cloudy" ? 0xa0b8cc : theme.sky
-      );
-      scene.fog = new THREE.Fog(
-        w === "rainy" ? 0x8899aa : w === "cloudy" ? 0xa0b8cc : theme.sky,
-        40, 100
-      );
+      clouds.forEach((c, i) => { c.group.visible = i < WEATHER_CLOUD_COUNTS[w]; });
     };
     applyWeatherClouds(currentWeather);
 
@@ -914,11 +943,12 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       attractionGroupsRef.current.set(a.id, { group, x: a.x, z: a.z });
       animatorsRef.current.push({ id: a.id, fn: result.animator });
       const { clickTargets, burstColor } = result;
-      if (isNight) {
-        const pl = new THREE.PointLight(burstColor, 2.0, 7);
-        pl.position.set(0, 3.5, 0);
-        group.add(pl);
-      }
+      const seedPl = new THREE.PointLight(burstColor, 0, 7);
+      seedPl.userData.maxI = 2.0;
+      seedPl.position.set(0, 3.5, 0);
+      group.add(seedPl);
+      nightLightsRef.current.push(seedPl);
+      nightMatsRef.current.push(...result.nightMaterials);
       clickablesRef.current.push({
         id: a.id,
         objects: clickTargets,
@@ -1122,6 +1152,44 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       );
       camera.lookAt(cameraTarget);
 
+      // ── Day / Night cycle ──────────────────────────────────────────────────
+      // sunHeight: +1 = noon, -1 = midnight; cycle repeats every CYCLE_T t-units
+      const cyclePhase = (t % CYCLE_T) / CYCLE_T; // 0 → 1
+      const sunHeight  = Math.sin(cyclePhase * Math.PI * 2 - Math.PI / 2); // -1..+1
+      const nightFactor = Math.max(0, -sunHeight * 1.15 + 0.15);           // 0=day, 1=night (clamped)
+
+      // Sky & fog — blend day↔night then overlay weather tint
+      skyCurrent.copy(cDaySky).lerp(cNightSky, Math.min(1, nightFactor));
+      if (currentWeather === "rainy")   skyCurrent.lerp(cRainSky,  0.55);
+      else if (currentWeather === "cloudy") skyCurrent.lerp(cCloudSky, 0.35);
+      (scene.fog as THREE.Fog).color.copy(skyCurrent);
+
+      // Ambient & directional light
+      ambientLight.color.copy(cDayAmb).lerp(cNightAmb, Math.min(1, nightFactor));
+      sunLight.color.copy(cDayLight).lerp(cNightLight, Math.min(1, nightFactor));
+      sunLight.intensity = 0.15 + Math.max(0, sunHeight) * 1.05;
+
+      // Ground colour
+      groundMat.color.copy(cDayGround).lerp(cNightGround, Math.min(1, nightFactor));
+
+      // Sun position (arc from east to west)
+      const sunAngle = cyclePhase * Math.PI * 2 - Math.PI / 2;
+      sunMesh.position.set(Math.cos(sunAngle) * 55, Math.sin(sunAngle) * 38, -35);
+      sunMesh.visible = Math.sin(sunAngle) > -0.08;
+      // Moon on the opposite arc
+      moonMesh.position.set(-Math.cos(sunAngle) * 55, -Math.sin(sunAngle) * 38, -35);
+      moonMesh.visible = -Math.sin(sunAngle) > -0.08;
+
+      // Stars fade in at night
+      starMat.opacity = Math.max(0, (nightFactor - 0.4) / 0.6);
+
+      // Night lights — PointLights and emissive materials fade in/out
+      const lightOn = Math.max(0, Math.min(1, (nightFactor - 0.25) / 0.35));
+      nightLightsRef.current.forEach(pl => { pl.intensity = lightOn * ((pl.userData.maxI as number) ?? 1); });
+      nightMatsRef.current.forEach(m => { m.emissiveIntensity = lightOn * ((m.userData.ni as number) ?? 0.8); });
+      glowMat.opacity = lightOn * 0.6;
+      // ── end cycle ──────────────────────────────────────────────────────────
+
       // Weather tick
       weatherTimer += 0.01;
       if (weatherTimer >= weatherDuration) {
@@ -1169,25 +1237,28 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
         if (b.mesh.position.y > 18) b.mesh.position.set(b.x, b.startY, b.z);
       });
 
-      // Manage people entry/exit based on current visitor count
-      const targetActive = Math.min(people.length, Math.round((currentVisitorsRef.current / Math.max(1, capacityRef.current)) * people.length));
-      const activeCount = people.filter(p => p.active).length;
-      if (activeCount < targetActive) {
-        // Activate idle people — they enter through the gate
-        const idle = people.filter(p => !p.active && !p.exiting);
-        const toActivate = Math.min(targetActive - activeCount, idle.length);
-        for (let i = 0; i < toActivate; i++) {
-          const p = idle[i];
+      // Manage people entry/exit — family groups count as 3 visitors
+      const pax = (p: { isFamily: boolean }) => p.isFamily ? 3 : 1;
+      const totalSlots   = people.reduce((s, p) => s + pax(p), 0); // 20×1 + 7×3 = 41
+      const targetPax    = Math.round((currentVisitorsRef.current / Math.max(1, capacityRef.current)) * totalSlots);
+      const activePax    = people.filter(p => p.active).reduce((s, p) => s + pax(p), 0);
+      if (activePax < targetPax) {
+        let need = targetPax - activePax;
+        for (const p of people.filter(q => !q.active && !q.exiting)) {
+          if (need <= 0) break;
           p.segIdx = 0; p.t = 0; p.dir = 1;
           p.active = true;
           p.group.position.copy(p.waypoints[0]);
           p.group.visible = true;
+          need -= pax(p);
         }
-      } else if (activeCount > targetActive) {
-        // Send surplus visitors back to the gate
-        const surplus = people.filter(p => p.active && !p.exiting);
-        const toExit = Math.min(activeCount - targetActive, surplus.length);
-        for (let i = 0; i < toExit; i++) surplus[i].exiting = true;
+      } else if (activePax > targetPax) {
+        let excess = activePax - targetPax;
+        for (const p of people.filter(q => q.active && !q.exiting)) {
+          if (excess <= 0) break;
+          p.exiting = true;
+          excess -= pax(p);
+        }
       }
 
       // People — follow waypoint routes
