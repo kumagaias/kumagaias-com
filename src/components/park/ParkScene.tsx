@@ -387,8 +387,8 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
         pathMeshesRef.current.set(_currentPathId, arr);
       }
     }
-    // Central avenue — extends from just past the near sidewalk edge all the way into the park
-    addPath(0, 12.2, 0, -22, 2.2);
+    // Central avenue — from just inside the gate to the far end of the park
+    addPath(0, 10.8, 0, -22, 2.2);
 
     // Branch path with obstacle avoidance
     function addBranchPath(destX: number, destZ: number, skipId: string) {
