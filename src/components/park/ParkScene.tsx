@@ -479,6 +479,11 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
           b.mesh.visible = false;
           burstEmitterRef.current?.(pos, b.color);
           onBalloonPopRef.current();
+          // Show +$1 text at balloon screen position
+          const ndc = pos.clone().project(camera);
+          const sx = (ndc.x * 0.5 + 0.5) * mount.clientWidth;
+          const sy = (-ndc.y * 0.5 + 0.5) * mount.clientHeight;
+          showPopText(sx, sy, "+$1");
           setTimeout(() => {
             b.mesh.position.set(b.x, b.startY, b.z);
             b.mesh.visible = true;
@@ -523,23 +528,22 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
     // People — waypoint-based path following
     const personColors = [0xff9966, 0x66aaff, 0xffcc44, 0xcc66ff, 0x44ddaa, 0xff6644, 0xaaddff, 0xffaacc, 0xff4488, 0x88ff44, 0x44ffee, 0xffaa66];
     const w = (x: number, z: number) => new THREE.Vector3(x, 0, z);
+    // All routes start at gate entrance (outside → inside)
+    const GATE = w(0, 12.8);
     const routes: THREE.Vector3[][] = [
-      [w(-15, 11.5), w(15, 11.5)],
-      [w(15, 11.7), w(-15, 11.7)],
-      [w(-6, 11.4), w(6, 11.4)],
-      [w(0, 10.4), w(0, -20)],
-      [w(0, 10.4), w(0, -14)],
-      [w(0, 10.4), w(0, 3),   w(-12, 3)],
-      [w(0, 10.4), w(0, 3),   w(12, 3)],
-      [w(0, 10.4), w(0, -3),  w(-9, -3)],
-      [w(0, 10.4), w(0, -3),  w(9, -3)],
-      [w(0, 10.4), w(0, -8),  w(-7, -8)],
-      [w(0, 10.4), w(0, -8),  w(7, -8)],
-      [w(0, 10.4), w(0, -13), w(-5, -13)],
-      [w(0, 10.4), w(0, -13), w(5, -13)],
-      [w(0, 10.4), w(0, -18), w(-4, -18)],
-      [w(0, 10.4), w(0, -18), w(4, -18)],
-      [w(0, 10.4), w(0, -6),  w(0, -20)],
+      [GATE, w(0, 10.4), w(0, -20)],
+      [GATE, w(0, 10.4), w(0, -14)],
+      [GATE, w(0, 10.4), w(0, 3),   w(-12, 3)],
+      [GATE, w(0, 10.4), w(0, 3),   w(12, 3)],
+      [GATE, w(0, 10.4), w(0, -3),  w(-9, -3)],
+      [GATE, w(0, 10.4), w(0, -3),  w(9, -3)],
+      [GATE, w(0, 10.4), w(0, -8),  w(-7, -8)],
+      [GATE, w(0, 10.4), w(0, -8),  w(7, -8)],
+      [GATE, w(0, 10.4), w(0, -13), w(-5, -13)],
+      [GATE, w(0, 10.4), w(0, -13), w(5, -13)],
+      [GATE, w(0, 10.4), w(0, -18), w(-4, -18)],
+      [GATE, w(0, 10.4), w(0, -18), w(4, -18)],
+      [GATE, w(0, 10.4), w(0, -6),  w(0, -20)],
     ];
     const childColors = [0xffdd88, 0xff88cc, 0x88ffcc, 0xffaa44, 0xaaccff];
     interface PersonData {
@@ -550,37 +554,29 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       dir: 1 | -1;
       speed: number;
       isFamily: boolean;
+      active: boolean;   // currently in park (visible, walking)
+      exiting: boolean;  // heading back to gate to leave
     }
     const people: PersonData[] = [];
-    // 12 solo visitors + 4 family groups
+    // 12 solo visitors + 4 family groups — all start outside gate, invisible
     for (let i = 0; i < 12; i++) {
       const person = makePerson(personColors[i % personColors.length]);
       const waypoints = routes[i % routes.length];
-      const segIdx = Math.floor(Math.random() * (waypoints.length - 1));
-      const t = Math.random();
-      const dir: 1 | -1 = Math.random() < 0.5 ? 1 : -1;
-      const from = dir === 1 ? waypoints[segIdx] : waypoints[segIdx + 1];
-      const to   = dir === 1 ? waypoints[segIdx + 1] : waypoints[segIdx];
-      person.position.lerpVectors(from, to, t);
+      person.position.copy(GATE);
       person.visible = false;
       scene.add(person);
-      people.push({ group: person, waypoints, segIdx, t, dir, speed: 0.035 + Math.random() * 0.02, isFamily: false });
+      people.push({ group: person, waypoints, segIdx: 0, t: 0, dir: 1, speed: 0.035 + Math.random() * 0.02, isFamily: false, active: false, exiting: false });
     }
     for (let i = 0; i < 4; i++) {
       const family = makeFamilyGroup(
         personColors[i % personColors.length],
         childColors[i % childColors.length]
       );
-      const waypoints = routes[(i + 4) % routes.length];
-      const segIdx = Math.floor(Math.random() * (waypoints.length - 1));
-      const t = Math.random();
-      const dir: 1 | -1 = Math.random() < 0.5 ? 1 : -1;
-      const from = dir === 1 ? waypoints[segIdx] : waypoints[segIdx + 1];
-      const to   = dir === 1 ? waypoints[segIdx + 1] : waypoints[segIdx];
-      family.position.lerpVectors(from, to, t);
+      const waypoints = routes[i % routes.length];
+      family.position.copy(GATE);
       family.visible = false;
       scene.add(family);
-      people.push({ group: family, waypoints, segIdx, t, dir, speed: 0.028 + Math.random() * 0.015, isFamily: true });
+      people.push({ group: family, waypoints, segIdx: 0, t: 0, dir: 1, speed: 0.028 + Math.random() * 0.015, isFamily: true, active: false, exiting: false });
     }
 
     // Vehicles
@@ -749,14 +745,36 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
         scene.add(cbm);
         // drift speed per balloon (slight horizontal wobble)
         const drift = (Math.random() - 0.5) * 0.015;
+        let fadeInterval: ReturnType<typeof setInterval> | null = null;
+        // Make celebration balloon clickable
+        const cbEntry: ClickableEntry = {
+          id: "celebBalloon",
+          objects: [cbm],
+          onHit: (pos) => {
+            if (fadeInterval) clearInterval(fadeInterval);
+            scene.remove(cbm);
+            clickablesRef.current = clickablesRef.current.filter(e => e !== cbEntry);
+            burstEmitterRef.current?.(pos, color);
+            onBalloonPopRef.current();
+            const ndc = pos.clone().project(camera);
+            const sx = (ndc.x * 0.5 + 0.5) * mount.clientWidth;
+            const sy = (-ndc.y * 0.5 + 0.5) * mount.clientHeight;
+            showPopText(sx, sy, "+$1");
+          },
+        };
+        clickablesRef.current.push(cbEntry);
         setTimeout(() => {
           let life = 1;
-          const fade = setInterval(() => {
+          fadeInterval = setInterval(() => {
             life -= 0.007;
             (cbm.material as THREE.MeshLambertMaterial).opacity = Math.max(0, life);
             cbm.position.y += 0.07;
             cbm.position.x += drift;
-            if (life <= 0) { scene.remove(cbm); clearInterval(fade); }
+            if (life <= 0) {
+              scene.remove(cbm);
+              clearInterval(fadeInterval!);
+              clickablesRef.current = clickablesRef.current.filter(e => e !== cbEntry);
+            }
           }, 16);
         }, i * 60);
       }
@@ -764,6 +782,21 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
 
     celebrateRef.current = triggerCelebration;
     celebrateTriggerRef.current = triggerCelebration;
+
+    // Floating +$1 text helper
+    const showPopText = (screenX: number, screenY: number, text: string) => {
+      const el = document.createElement("div");
+      el.textContent = text;
+      el.style.cssText = `position:absolute;left:${screenX}px;top:${screenY}px;transform:translate(-50%,-50%);
+        color:#ffe066;font-weight:800;font-size:1rem;pointer-events:none;z-index:30;
+        text-shadow:0 1px 4px rgba(0,0,0,0.7);transition:opacity 0.8s,transform 0.8s;`;
+      mount.appendChild(el);
+      requestAnimationFrame(() => {
+        el.style.opacity = "0";
+        el.style.transform = "translate(-50%,-180%)";
+      });
+      setTimeout(() => el.remove(), 900);
+    };
 
     // Burst system
     let bursts: { mesh: THREE.Mesh; vel: THREE.Vector3; life: number }[] = [];
@@ -1028,12 +1061,34 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
         if (b.mesh.position.y > 18) b.mesh.position.set(b.x, b.startY, b.z);
       });
 
-      // Show people proportionally to current visitors
-      const visibleCount = Math.min(people.length, Math.round((currentVisitorsRef.current / Math.max(1, 80)) * people.length));
-      people.forEach((p, i) => { p.group.visible = i < visibleCount; });
+      // Manage people entry/exit based on current visitor count
+      const targetActive = Math.min(people.length, Math.round((currentVisitorsRef.current / Math.max(1, 80)) * people.length));
+      const activeCount = people.filter(p => p.active).length;
+      if (activeCount < targetActive) {
+        // Activate idle people — they enter through the gate
+        const idle = people.filter(p => !p.active && !p.exiting);
+        const toActivate = Math.min(targetActive - activeCount, idle.length);
+        for (let i = 0; i < toActivate; i++) {
+          const p = idle[i];
+          p.segIdx = 0; p.t = 0; p.dir = 1;
+          p.active = true;
+          p.group.position.copy(p.waypoints[0]);
+          p.group.visible = true;
+        }
+      } else if (activeCount > targetActive) {
+        // Send surplus visitors back to the gate
+        const surplus = people.filter(p => p.active && !p.exiting);
+        const toExit = Math.min(activeCount - targetActive, surplus.length);
+        for (let i = 0; i < toExit; i++) surplus[i].exiting = true;
+      }
 
       // People — follow waypoint routes
       people.forEach((p) => {
+        if (!p.active) return;
+        // Exiting: force walk back toward waypoints[0]
+        if (p.exiting && p.dir === 1 && p.segIdx > 0) {
+          p.dir = -1;
+        }
         const from = p.dir === 1 ? p.waypoints[p.segIdx] : p.waypoints[p.segIdx + 1];
         const to   = p.dir === 1 ? p.waypoints[p.segIdx + 1] : p.waypoints[p.segIdx];
         const segLen = from.distanceTo(to);
@@ -1044,8 +1099,20 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
             if (p.segIdx < p.waypoints.length - 2) p.segIdx++;
             else p.dir = -1;
           } else {
-            if (p.segIdx > 0) p.segIdx--;
-            else p.dir = 1;
+            if (p.segIdx > 0) {
+              p.segIdx--;
+            } else {
+              // Reached gate (start) heading back
+              if (p.exiting) {
+                // Exit the park — reset for next use
+                p.active = false; p.exiting = false; p.dir = 1; p.t = 0;
+                p.group.visible = false;
+                p.group.position.copy(p.waypoints[0]);
+                return;
+              } else {
+                p.dir = 1; // bounce back in
+              }
+            }
           }
         }
         p.group.position.lerpVectors(from, to, p.t);
