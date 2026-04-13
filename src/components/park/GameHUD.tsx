@@ -56,14 +56,14 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
         <span>{weatherLabel}</span>
       </div>
 
-      {/* Line 2: Net P&L / money */}
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "flex-end", gap: "6px", marginTop: "1px" }}>
-        <span style={{ fontSize: "0.82rem", fontWeight: 700, color: netColor }}>
-          {netPerTick >= 0 ? "+" : ""}${netPerTick}
-        </span>
-        <span style={{ fontSize: "1.1rem", fontWeight: 800, letterSpacing: "0.02em" }}>
-          ${money.toLocaleString()}
-        </span>
+      {/* Line 2: Money */}
+      <div style={{ fontSize: "1.1rem", fontWeight: 800, letterSpacing: "0.02em", marginTop: "1px" }}>
+        ${money.toLocaleString()}
+      </div>
+
+      {/* Line 3: Net P&L */}
+      <div style={{ fontSize: "0.82rem", fontWeight: 700, color: netColor }}>
+        {netPerTick >= 0 ? "+" : ""}${netPerTick}
       </div>
       {expanded && (
         <div style={{ ...sub, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
@@ -72,7 +72,7 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
         </div>
       )}
 
-      {/* Line 3: Current / capacity guests */}
+      {/* Line 4: Current / capacity guests */}
       <div style={{ fontSize: "0.82rem", marginTop: "2px" }}>
         👥 {currentVisitors.toLocaleString()} / {capacity}{lang === "jp" ? "人" : ""}
       </div>
