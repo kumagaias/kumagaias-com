@@ -282,8 +282,6 @@ function buildShootingGallery(container: THREE.Object3D, x: number, z: number): 
   g.position.set(x, 0, z);
 
   // Floor platform
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(5, 0.12, 3.2),
-    new THREE.MeshLambertMaterial({ color: 0xd4a96a })), { position: { set(_x: number, _y: number, _z: number) { (this as unknown as THREE.Mesh).position.set(_x, _y, _z); return this; } } }));
   const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(5, 0.12, 3.2), new THREE.MeshLambertMaterial({ color: 0xd4a96a }));
   floorMesh.position.set(0, 0.06, -0.6);
   g.add(floorMesh);
