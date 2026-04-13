@@ -8,6 +8,10 @@ import { CATALOG, ALL_ATTRACTION_TYPES, SHOP_CATALOG } from "./park/catalog";
 import type { PlacedAttraction, AttractionType, PlacedShop, ShopType } from "./park/types";
 import { useLang } from "../contexts/LanguageContext";
 
+function genId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
 const INITIAL_MONEY = 1500;
 const INCOME_INTERVAL_MS = 5000;
 const VISITOR_FILL_TICKS = 5;
@@ -19,7 +23,7 @@ function pickInitialPos(): { x: number; z: number } {
 function initialState() {
   const type = ALL_ATTRACTION_TYPES[Math.floor(Math.random() * ALL_ATTRACTION_TYPES.length)];
   const pos = pickInitialPos();
-  const first: PlacedAttraction = { id: crypto.randomUUID(), type, x: pos.x, z: pos.z };
+  const first: PlacedAttraction = { id: genId(), type, x: pos.x, z: pos.z };
   return {
     money: INITIAL_MONEY - CATALOG[type].cost,
     currentVisitors: 0,
@@ -78,7 +82,7 @@ export default function AmusementPark() {
       return {
         ...s,
         money: s.money - cost,
-        attractions: [...s.attractions, { id: crypto.randomUUID(), type: placingType, x, z }],
+        attractions: [...s.attractions, { id: genId(), type: placingType, x, z }],
       };
     });
     setPlacingType(null);
@@ -95,7 +99,7 @@ export default function AmusementPark() {
       return {
         ...s,
         money: s.money - cost,
-        shops: [...s.shops, { id: crypto.randomUUID(), type: placingShopType, x, z }],
+        shops: [...s.shops, { id: genId(), type: placingShopType, x, z }],
       };
     });
     setPlacingShopType(null);
