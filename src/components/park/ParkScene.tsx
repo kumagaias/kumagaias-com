@@ -531,30 +531,36 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
     // People — waypoint-based path following
     const personColors = [0xff9966, 0x66aaff, 0xffcc44, 0xcc66ff, 0x44ddaa, 0xff6644, 0xaaddff, 0xffaacc, 0xff4488, 0x88ff44, 0x44ffee, 0xffaa66, 0xff8833, 0x33aaff, 0xbbff44, 0xee44bb, 0x44eebb, 0xffdd22, 0xaa44ff, 0xff4444];
     const w = (x: number, z: number) => new THREE.Vector3(x, 0, z);
-    // All routes start at gate entrance (outside → inside)
-    const GATE = w(0, 12.8);
+    // Routes start from far left/right on the sidewalk, walk to gate, then into park
+    const G  = w(0, 10.4);  // gate inside
+    const GL = w(-1, 11.8); // just left of gate on sidewalk
+    const GR = w( 1, 11.8); // just right of gate on sidewalk
+    const L  = w(-28, 11.8); // far left sidewalk spawn
+    const R  = w( 28, 11.8); // far right sidewalk spawn
     const routes: THREE.Vector3[][] = [
-      [GATE, w(0, 10.4), w(0, -20)],
-      [GATE, w(0, 10.4), w(0, -14)],
-      [GATE, w(0, 10.4), w(0, 3),   w(-12, 3)],
-      [GATE, w(0, 10.4), w(0, 3),   w(12, 3)],
-      [GATE, w(0, 10.4), w(0, -3),  w(-9, -3)],
-      [GATE, w(0, 10.4), w(0, -3),  w(9, -3)],
-      [GATE, w(0, 10.4), w(0, -8),  w(-7, -8)],
-      [GATE, w(0, 10.4), w(0, -8),  w(7, -8)],
-      [GATE, w(0, 10.4), w(0, -13), w(-5, -13)],
-      [GATE, w(0, 10.4), w(0, -13), w(5, -13)],
-      [GATE, w(0, 10.4), w(0, -18), w(-4, -18)],
-      [GATE, w(0, 10.4), w(0, -18), w(4, -18)],
-      [GATE, w(0, 10.4), w(0, -6),  w(0, -20)],
-      [GATE, w(0, 10.4), w(0, 5),   w(-15, 5)],
-      [GATE, w(0, 10.4), w(0, 5),   w(15, 5)],
-      [GATE, w(0, 10.4), w(0, -10), w(-10, -10)],
-      [GATE, w(0, 10.4), w(0, -10), w(10, -10)],
-      [GATE, w(0, 10.4), w(0, -16), w(-6, -16)],
-      [GATE, w(0, 10.4), w(0, -16), w(6, -16)],
-      [GATE, w(0, 10.4), w(0, 1),   w(-11, 1),  w(-11, -8)],
-      [GATE, w(0, 10.4), w(0, 1),   w(11, 1),   w(11, -8)],
+      // Left-approach routes
+      [L, GL, G, w(0, -20)],
+      [L, GL, G, w(0, -14)],
+      [L, GL, G, w(0,  3), w(-12,  3)],
+      [L, GL, G, w(0,  3), w( 12,  3)],
+      [L, GL, G, w(0, -3), w(-9,  -3)],
+      [L, GL, G, w(0, -8), w(-7,  -8)],
+      [L, GL, G, w(0,-13), w(-5, -13)],
+      [L, GL, G, w(0,-18), w(-4, -18)],
+      [L, GL, G, w(0, -6), w(0,  -20)],
+      [L, GL, G, w(0,  5), w(-15,   5)],
+      [L, GL, G, w(0,  1), w(-11,   1), w(-11, -8)],
+      // Right-approach routes
+      [R, GR, G, w(0, -14)],
+      [R, GR, G, w(0,  3), w( 12,   3)],
+      [R, GR, G, w(0, -3), w(  9,  -3)],
+      [R, GR, G, w(0, -8), w(  7,  -8)],
+      [R, GR, G, w(0,-13), w(  5, -13)],
+      [R, GR, G, w(0,-18), w(  4, -18)],
+      [R, GR, G, w(0,  5), w( 15,   5)],
+      [R, GR, G, w(0,-10), w( 10, -10)],
+      [R, GR, G, w(0,-16), w(  6, -16)],
+      [R, GR, G, w(0,  1), w( 11,   1), w(11, -8)],
     ];
     const childColors = [0xffdd88, 0xff88cc, 0x88ffcc, 0xffaa44, 0xaaccff, 0xffcc88, 0xccffaa];
     interface PersonData {
@@ -569,11 +575,11 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       exiting: boolean;  // heading back to gate to leave
     }
     const people: PersonData[] = [];
-    // 20 solo visitors + 7 family groups — all start outside gate, invisible
+    // 20 solo visitors + 7 family groups — all start on sidewalk, invisible
     for (let i = 0; i < 20; i++) {
       const person = makePerson(personColors[i % personColors.length]);
       const waypoints = routes[i % routes.length];
-      person.position.copy(GATE);
+      person.position.copy(waypoints[0]);
       person.visible = false;
       scene.add(person);
       people.push({ group: person, waypoints, segIdx: 0, t: 0, dir: 1, speed: 0.032 + Math.random() * 0.022, isFamily: false, active: false, exiting: false });
@@ -584,7 +590,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
         childColors[i % childColors.length]
       );
       const waypoints = routes[(i * 3) % routes.length];
-      family.position.copy(GATE);
+      family.position.copy(waypoints[0]);
       family.visible = false;
       scene.add(family);
       people.push({ group: family, waypoints, segIdx: 0, t: 0, dir: 1, speed: 0.026 + Math.random() * 0.014, isFamily: true, active: false, exiting: false });
