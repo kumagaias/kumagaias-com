@@ -387,8 +387,8 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
         pathMeshesRef.current.set(_currentPathId, arr);
       }
     }
-    // Central avenue — extends deep into the park and out through the gate to the sidewalk
-    addPath(0, 12.8, 0, -22, 2.2);
+    // Central avenue — extends from just past the near sidewalk edge all the way into the park
+    addPath(0, 12.2, 0, -22, 2.2);
 
     // Branch path with obstacle avoidance
     function addBranchPath(destX: number, destZ: number, skipId: string) {
@@ -529,7 +529,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
     }
 
     // People — waypoint-based path following
-    const personColors = [0xff9966, 0x66aaff, 0xffcc44, 0xcc66ff, 0x44ddaa, 0xff6644, 0xaaddff, 0xffaacc, 0xff4488, 0x88ff44, 0x44ffee, 0xffaa66];
+    const personColors = [0xff9966, 0x66aaff, 0xffcc44, 0xcc66ff, 0x44ddaa, 0xff6644, 0xaaddff, 0xffaacc, 0xff4488, 0x88ff44, 0x44ffee, 0xffaa66, 0xff8833, 0x33aaff, 0xbbff44, 0xee44bb, 0x44eebb, 0xffdd22, 0xaa44ff, 0xff4444];
     const w = (x: number, z: number) => new THREE.Vector3(x, 0, z);
     // All routes start at gate entrance (outside → inside)
     const GATE = w(0, 12.8);
@@ -547,8 +547,16 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       [GATE, w(0, 10.4), w(0, -18), w(-4, -18)],
       [GATE, w(0, 10.4), w(0, -18), w(4, -18)],
       [GATE, w(0, 10.4), w(0, -6),  w(0, -20)],
+      [GATE, w(0, 10.4), w(0, 5),   w(-15, 5)],
+      [GATE, w(0, 10.4), w(0, 5),   w(15, 5)],
+      [GATE, w(0, 10.4), w(0, -10), w(-10, -10)],
+      [GATE, w(0, 10.4), w(0, -10), w(10, -10)],
+      [GATE, w(0, 10.4), w(0, -16), w(-6, -16)],
+      [GATE, w(0, 10.4), w(0, -16), w(6, -16)],
+      [GATE, w(0, 10.4), w(0, 1),   w(-11, 1),  w(-11, -8)],
+      [GATE, w(0, 10.4), w(0, 1),   w(11, 1),   w(11, -8)],
     ];
-    const childColors = [0xffdd88, 0xff88cc, 0x88ffcc, 0xffaa44, 0xaaccff];
+    const childColors = [0xffdd88, 0xff88cc, 0x88ffcc, 0xffaa44, 0xaaccff, 0xffcc88, 0xccffaa];
     interface PersonData {
       group: THREE.Group;
       waypoints: THREE.Vector3[];
@@ -561,25 +569,25 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       exiting: boolean;  // heading back to gate to leave
     }
     const people: PersonData[] = [];
-    // 12 solo visitors + 4 family groups — all start outside gate, invisible
-    for (let i = 0; i < 12; i++) {
+    // 20 solo visitors + 7 family groups — all start outside gate, invisible
+    for (let i = 0; i < 20; i++) {
       const person = makePerson(personColors[i % personColors.length]);
       const waypoints = routes[i % routes.length];
       person.position.copy(GATE);
       person.visible = false;
       scene.add(person);
-      people.push({ group: person, waypoints, segIdx: 0, t: 0, dir: 1, speed: 0.035 + Math.random() * 0.02, isFamily: false, active: false, exiting: false });
+      people.push({ group: person, waypoints, segIdx: 0, t: 0, dir: 1, speed: 0.032 + Math.random() * 0.022, isFamily: false, active: false, exiting: false });
     }
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 7; i++) {
       const family = makeFamilyGroup(
         personColors[i % personColors.length],
         childColors[i % childColors.length]
       );
-      const waypoints = routes[i % routes.length];
+      const waypoints = routes[(i * 3) % routes.length];
       family.position.copy(GATE);
       family.visible = false;
       scene.add(family);
-      people.push({ group: family, waypoints, segIdx: 0, t: 0, dir: 1, speed: 0.028 + Math.random() * 0.015, isFamily: true, active: false, exiting: false });
+      people.push({ group: family, waypoints, segIdx: 0, t: 0, dir: 1, speed: 0.026 + Math.random() * 0.014, isFamily: true, active: false, exiting: false });
     }
 
     // Vehicles
