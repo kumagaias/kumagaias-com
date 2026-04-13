@@ -5,7 +5,7 @@ import AttractionPanel from "./park/AttractionPanel";
 import ShopPanel from "./park/ShopPanel";
 import GameHUD from "./park/GameHUD";
 import WelcomeMessage from "./park/WelcomeMessage";
-import { CATALOG, ALL_ATTRACTION_TYPES, SHOP_CATALOG } from "./park/catalog";
+import { CATALOG, SHOP_CATALOG } from "./park/catalog";
 import type { PlacedAttraction, AttractionType, PlacedShop, ShopType } from "./park/types";
 import { useLang } from "../contexts/LanguageContext";
 
@@ -16,6 +16,11 @@ function genId(): string {
 const INITIAL_MONEY = 1500;
 const INCOME_INTERVAL_MS = 5000;
 const VISITOR_FILL_TICKS = 5;
+const SAVE_KEY = "kumagaias_park_save";
+/** One-time entry ticket price per visitor. */
+const TICKET_PRICE = 4;
+/** Fraction of current visitors who "complete their visit" and leave each tick, making room for new ones. */
+const TURNOVER_RATE = 0.25;
 
 /** Each duplicate of the same type contributes 50% of the previous one. */
 function calcCapacity(attractions: PlacedAttraction[]): number {
@@ -30,13 +35,24 @@ function calcCapacity(attractions: PlacedAttraction[]): number {
 }
 
 function pickInitialPos(): { x: number; z: number } {
-  // Keep x off-center so the entrance walkway doesn't pass straight through the attraction
   const side = Math.random() < 0.5 ? -1 : 1;
   return { x: side * (6 + Math.random() * 8), z: -12 + Math.random() * 4 };
 }
 
-function initialState() {
-  const type = ALL_ATTRACTION_TYPES[Math.floor(Math.random() * ALL_ATTRACTION_TYPES.length)];
+const CHEAP_STARTERS: AttractionType[] = ["shootingGallery", "merryGoRound", "coffeeCups", "swingCarousel"];
+
+const MILESTONES = [100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000];
+
+interface GameState {
+  money: number;
+  currentVisitors: number;
+  totalVisitors: number;
+  attractions: PlacedAttraction[];
+  shops: PlacedShop[];
+}
+
+function freshState(): GameState {
+  const type = CHEAP_STARTERS[Math.floor(Math.random() * CHEAP_STARTERS.length)];
   const pos = pickInitialPos();
   const first: PlacedAttraction = { id: genId(), type, x: pos.x, z: pos.z };
   return {
@@ -46,6 +62,22 @@ function initialState() {
     attractions: [first],
     shops: [] as PlacedShop[],
   };
+}
+
+function loadSavedState(): GameState | null {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as GameState;
+    if (!parsed.attractions || !parsed.shops) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function initialState(): GameState {
+  return loadSavedState() ?? freshState();
 }
 
 export default function AmusementPark() {
@@ -61,14 +93,20 @@ export default function AmusementPark() {
   const weatherRef = useRef<WeatherType>("sunny");
   const celebrateTriggerRef = useRef<(() => void) | null>(null);
   const nextMilestoneRef = useRef(0);
-  const MILESTONES = [100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000];
+  const [milestoneMsg, setMilestoneMsg] = useState<string | null>(null);
+  const milestoneMsgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleWeatherChange = useCallback((w: WeatherType) => {
     setWeather(w);
     weatherRef.current = w;
   }, []);
 
-  const stateRef = useRef(state);
-  useEffect(() => { stateRef.current = state; }, [state]);
+  // Sync nextMilestone ref when state is loaded
+  useEffect(() => {
+    const idx = MILESTONES.findIndex((m) => state.totalVisitors < m);
+    nextMilestoneRef.current = idx === -1 ? MILESTONES.length : idx;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Income tick
   useEffect(() => {
@@ -82,14 +120,26 @@ export default function AmusementPark() {
         const effectiveCap = Math.floor(capacity * weatherMult);
         const growBy = effectiveCap > 0 ? Math.max(1, Math.ceil(effectiveCap / VISITOR_FILL_TICKS)) : 0;
         const newCurrent = Math.min(effectiveCap, Math.max(0, s.currentVisitors + (weatherRef.current === "rainy" ? -Math.ceil(s.currentVisitors * 0.15) : growBy)));
-        // Income = base (1/visitor) + shop revenue — all maintenance
-        const income = newCurrent * (1 + shopRate) - attrMaint - shopMaint;
-        const newTotal = s.totalVisitors + newCurrent;
+        // Visitors who complete their visit and leave (= new slots for incoming guests)
+        const turnover = Math.floor(s.currentVisitors * TURNOVER_RATE);
+        // New arrivals = visitors filling empty slots (growth) + turnover replacements
+        const newArrivals = Math.max(0, newCurrent - s.currentVisitors) + turnover;
+        // Income: entry ticket (one-time) + ongoing shop spend - maintenance
+        const income = newArrivals * TICKET_PRICE + newCurrent * shopRate - attrMaint - shopMaint;
+        const newTotal = s.totalVisitors + newArrivals;
         // Milestone check
         const milestone = MILESTONES[nextMilestoneRef.current];
         if (milestone !== undefined && newTotal >= milestone) {
           nextMilestoneRef.current += 1;
           setTimeout(() => celebrateTriggerRef.current?.(), 0);
+          const msg = lang === "jp"
+            ? `累計 ${milestone.toLocaleString()} 人達成！おめでとう！🎉`
+            : `${milestone.toLocaleString()} total visitors! Congrats! 🎉`;
+          setTimeout(() => {
+            setMilestoneMsg(msg);
+            if (milestoneMsgTimerRef.current) clearTimeout(milestoneMsgTimerRef.current);
+            milestoneMsgTimerRef.current = setTimeout(() => setMilestoneMsg(null), 4000);
+          }, 0);
         }
         return {
           ...s,
@@ -100,7 +150,8 @@ export default function AmusementPark() {
       });
     }, INCOME_INTERVAL_MS);
     return () => clearInterval(id);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
 
   const handleBalloonPop = useCallback(() => {
     setState((s) => ({ ...s, money: s.money + 1 }));
@@ -181,12 +232,33 @@ export default function AmusementPark() {
     if (type) { setPlacingType(null); setDemolishing(false); }
   }, []);
 
+  const handleSave = useCallback(() => {
+    setState((s) => {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(s));
+      return s;
+    });
+  }, []);
+
+  const handleRestart = useCallback(() => {
+    const msg = lang === "jp"
+      ? "最初からやり直しますか？\n現在のデータは消えます。"
+      : "Restart from scratch?\nAll progress will be lost.";
+    if (!window.confirm(msg)) return;
+    localStorage.removeItem(SAVE_KEY);
+    const fresh = freshState();
+    nextMilestoneRef.current = 0;
+    setState(fresh);
+  }, [lang]);
+
   // Derived values for HUD
   const capacity = calcCapacity(attractions);
   const maintenanceCost =
     attractions.reduce((sum, a) => sum + CATALOG[a.type].maintenance, 0) +
     shops.reduce((sum, sh) => sum + SHOP_CATALOG[sh.type].maintenance, 0);
   const shopRate = shops.reduce((sum, sh) => sum + SHOP_CATALOG[sh.type].revenueRate, 0);
+  // Estimated gross per tick: ticket income from turnover + shop income
+  const turnoverEstimate = Math.floor(currentVisitors * TURNOVER_RATE);
+  const grossPerTick = Math.round(turnoverEstimate * TICKET_PRICE + currentVisitors * shopRate);
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
@@ -203,6 +275,7 @@ export default function AmusementPark() {
         onDemolishShop={handleDemolishShop}
         onWeatherChange={handleWeatherChange}
         celebrateTriggerRef={celebrateTriggerRef}
+        currentVisitors={currentVisitors}
       />
 
       {/* Left panel column: Build Attraction → Build Shop → Demolish */}
@@ -261,9 +334,45 @@ export default function AmusementPark() {
         totalVisitors={totalVisitors}
         capacity={capacity}
         maintenanceCost={maintenanceCost}
-        shopRate={shopRate}
+        grossPerTick={grossPerTick}
         weather={weather}
+        onSave={handleSave}
+        onRestart={handleRestart}
       />
+
+      {/* Milestone toast */}
+      {milestoneMsg && (
+        <div style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          background: "rgba(0,0,0,0.82)",
+          color: "#fff",
+          padding: "18px 32px",
+          borderRadius: "16px",
+          fontSize: "1.2rem",
+          fontWeight: 800,
+          textAlign: "center",
+          zIndex: 20,
+          backdropFilter: "blur(8px)",
+          border: "1px solid rgba(255,220,80,0.5)",
+          pointerEvents: "none",
+          whiteSpace: "pre-line",
+          animation: "fadeInOut 4s ease forwards",
+        }}>
+          {milestoneMsg}
+        </div>
+      )}
+      <style>{`
+        @keyframes fadeInOut {
+          0%   { opacity: 0; transform: translate(-50%, -60%) scale(0.85); }
+          15%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+          70%  { opacity: 1; }
+          100% { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+        }
+      `}</style>
+
       <WelcomeMessage />
     </div>
   );

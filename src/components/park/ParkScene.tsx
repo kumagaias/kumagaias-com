@@ -142,9 +142,10 @@ interface Props {
   onDemolishShop: (id: string) => void;
   onWeatherChange: (w: WeatherType) => void;
   celebrateTriggerRef: React.MutableRefObject<(() => void) | null>;
+  currentVisitors: number;
 }
 
-export default function ParkScene({ attractions, placingType, onPlace, onBalloonPop, demolishing, onDemolish, shops, placingShopType, onPlaceShop, onDemolishShop, onWeatherChange, celebrateTriggerRef }: Props) {
+export default function ParkScene({ attractions, placingType, onPlace, onBalloonPop, demolishing, onDemolish, shops, placingShopType, onPlaceShop, onDemolishShop, onWeatherChange, celebrateTriggerRef, currentVisitors }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const renderedRef = useRef<Set<string>>(new Set());
@@ -168,6 +169,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
   const shopGroupsRef = useRef<Map<string, AttractionGroupInfo>>(new Map());
   const onWeatherChangeRef = useRef<(w: WeatherType) => void>(onWeatherChange);
   const celebrateRef = useRef<(() => void) | null>(null);
+  const currentVisitorsRef = useRef(currentVisitors);
 
   // Sync refs with props each render
   useEffect(() => { placingTypeRef.current = placingType; }, [placingType]);
@@ -179,6 +181,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
   useEffect(() => { shopsRef.current = shops; }, [shops]);
   useEffect(() => { placingShopTypeRef.current = placingShopType; }, [placingShopType]);
   useEffect(() => { onWeatherChangeRef.current = onWeatherChange; }, [onWeatherChange]);
+  useEffect(() => { currentVisitorsRef.current = currentVisitors; }, [currentVisitors]);
   useEffect(() => { onPlaceShopRef.current = onPlaceShop; }, [onPlaceShop]);
   useEffect(() => { onDemolishShopRef.current = onDemolishShop; }, [onDemolishShop]);
 
@@ -546,6 +549,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       const from = dir === 1 ? waypoints[segIdx] : waypoints[segIdx + 1];
       const to   = dir === 1 ? waypoints[segIdx + 1] : waypoints[segIdx];
       person.position.lerpVectors(from, to, t);
+      person.visible = false;
       scene.add(person);
       people.push({ group: person, waypoints, segIdx, t, dir, speed: 0.035 + Math.random() * 0.02, isFamily: false });
     }
@@ -561,6 +565,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       const from = dir === 1 ? waypoints[segIdx] : waypoints[segIdx + 1];
       const to   = dir === 1 ? waypoints[segIdx + 1] : waypoints[segIdx];
       family.position.lerpVectors(from, to, t);
+      family.visible = false;
       scene.add(family);
       people.push({ group: family, waypoints, segIdx, t, dir, speed: 0.028 + Math.random() * 0.015, isFamily: true });
     }
@@ -613,7 +618,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
     let weatherTimer = 0;
     let weatherDuration = 15 + Math.random() * 15; // 15-30s in "ticks" (t increments)
 
-    const WEATHER_CLOUD_COUNTS: Record<WeatherState, number> = { sunny: 3, cloudy: 9, rainy: 12 };
+    const WEATHER_CLOUD_COUNTS: Record<WeatherState, number> = { sunny: 1, cloudy: 10, rainy: 12 };
     const pickNextWeather = (): WeatherState => {
       const r = Math.random();
       return r < 0.7 ? "sunny" : r < 0.9 ? "cloudy" : "rainy";
@@ -1000,6 +1005,10 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
         b.mesh.position.x += Math.sin(t * 0.5 + b.startY) * 0.003;
         if (b.mesh.position.y > 18) b.mesh.position.set(b.x, b.startY, b.z);
       });
+
+      // Show people proportionally to current visitors
+      const visibleCount = Math.min(people.length, Math.round((currentVisitorsRef.current / Math.max(1, 80)) * people.length));
+      people.forEach((p, i) => { p.group.visible = i < visibleCount; });
 
       // People — follow waypoint routes
       people.forEach((p) => {

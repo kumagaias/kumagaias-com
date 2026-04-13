@@ -12,16 +12,17 @@ interface Props {
   totalVisitors: number;
   capacity: number;
   maintenanceCost: number;
-  shopRate: number;
+  grossPerTick: number;
   weather: WeatherType;
+  onSave: () => void;
+  onRestart: () => void;
 }
 
-export default function GameHUD({ money, currentVisitors, totalVisitors, capacity, maintenanceCost, shopRate, weather }: Props) {
+export default function GameHUD({ money, currentVisitors, totalVisitors, capacity, maintenanceCost, grossPerTick, weather, onSave, onRestart }: Props) {
   const { lang } = useLang();
   const [expanded, setExpanded] = useState(false);
 
-  const grossPerTick = Math.round(currentVisitors * (1 + shopRate));
-  const netPerTick   = grossPerTick - maintenanceCost;
+  const netPerTick = grossPerTick - maintenanceCost;
   const netColor     = netPerTick >= 0 ? "#7dffb3" : "#ff7d7d";
   const sub: React.CSSProperties = {
     fontSize: "0.64rem", opacity: 0.5, textAlign: "right", lineHeight: 1.6,
@@ -79,6 +80,31 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
       {expanded && (
         <div style={sub}>
           👥 {totalVisitors.toLocaleString()} {lang === "jp" ? "累計" : "total"}
+        </div>
+      )}
+
+      {expanded && (
+        <div style={{ display: "flex", gap: "6px", marginTop: "6px" }} onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={onSave}
+            style={{
+              flex: 1, padding: "5px 0", borderRadius: "7px", fontSize: "0.72rem", fontWeight: 700,
+              border: "1px solid rgba(125,255,179,0.4)", background: "rgba(125,255,179,0.14)",
+              color: "#7dffb3", cursor: "pointer",
+            }}
+          >
+            {lang === "jp" ? "💾 セーブ" : "💾 Save"}
+          </button>
+          <button
+            onClick={onRestart}
+            style={{
+              flex: 1, padding: "5px 0", borderRadius: "7px", fontSize: "0.72rem", fontWeight: 700,
+              border: "1px solid rgba(255,125,125,0.4)", background: "rgba(255,80,30,0.14)",
+              color: "#ff9977", cursor: "pointer",
+            }}
+          >
+            {lang === "jp" ? "🔄 やり直す" : "🔄 Restart"}
+          </button>
         </div>
       )}
 
