@@ -16,6 +16,8 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
 
   const grossPerTick = Math.round(currentVisitors * (1 + shopRate));
   const netPerTick   = grossPerTick - maintenanceCost;
+  const netColor     = netPerTick >= 0 ? "#7dffb3" : "#ff7d7d";
+  const sub: React.CSSProperties = { fontSize: "0.66rem", opacity: 0.55, textAlign: "right" };
 
   return (
     <div
@@ -36,64 +38,41 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
         userSelect: "none",
         display: "flex",
         flexDirection: "column",
-        gap: "3px",
+        gap: "2px",
       }}
     >
-      {/* Money */}
+      {/* Line 1: Money */}
       <div style={{ fontSize: "1.2rem", fontWeight: 800, letterSpacing: "0.02em" }}>
         ${money.toLocaleString()}
       </div>
 
-      {/* Gross per tick */}
-      <div style={{ fontSize: "0.72rem", color: grossPerTick >= 0 ? "#7dffb3" : "#ff7d7d", fontWeight: 700 }}>
-        {grossPerTick >= 0 ? "+" : ""}${grossPerTick} / tick
+      {/* Line 2: Net per tick */}
+      <div style={{ fontSize: "0.75rem", color: netColor, fontWeight: 700 }}>
+        {netPerTick >= 0 ? "+" : ""}${netPerTick} / tick
       </div>
-
-      {/* Maintenance */}
-      <div style={{ fontSize: "0.72rem", color: "rgba(255,160,100,0.9)" }}>
-        -${maintenanceCost} maint
-      </div>
-
-      {/* Divider + current visitors */}
-      <div style={{ borderTop: "1px solid rgba(255,255,255,0.12)", paddingTop: "4px", marginTop: "1px" }}>
-        <span style={{ fontSize: "0.82rem" }}>👥 {currentVisitors.toLocaleString()}</span>
-      </div>
-
-      {/* Expanded details */}
       {expanded && (
-        <div style={{
-          borderTop: "1px solid rgba(255,255,255,0.12)",
-          marginTop: "2px",
-          paddingTop: "5px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "3px",
-        }}>
-          <div style={{ fontSize: "0.7rem", opacity: 0.6 }}>
-            net: {netPerTick >= 0 ? "+" : ""}${netPerTick} / tick
-          </div>
-          <div style={{ fontSize: "0.7rem", opacity: 0.6 }}>
-            {lang === "jp" ? "定員" : "cap"} {currentVisitors}/{capacity}
-          </div>
-          <div style={{ fontSize: "0.7rem", opacity: 0.6 }}>
-            👥 {totalVisitors.toLocaleString()} {lang === "jp" ? "累計" : "total"}
-          </div>
-          {shopRate > 0 && (
-            <div style={{ fontSize: "0.7rem", opacity: 0.6 }}>
-              shop ×{(1 + shopRate).toFixed(1)}
-            </div>
-          )}
-          <div style={{ fontSize: "0.6rem", opacity: 0.3, marginTop: "2px" }}>
-            {lang === "jp" ? "タップで閉じる" : "tap to close"}
-          </div>
+        <>
+          <div style={sub}>+${grossPerTick} {lang === "jp" ? "収益" : "gross"}</div>
+          <div style={sub}>-${maintenanceCost} maint</div>
+        </>
+      )}
+
+      {/* Line 3: Current guests */}
+      <div style={{ fontSize: "0.82rem", marginTop: "2px" }}>
+        👥 {currentVisitors.toLocaleString()}
+      </div>
+      {expanded && (
+        <div style={sub}>
+          👥 {totalVisitors.toLocaleString()} {lang === "jp" ? "累計" : "total"}
         </div>
       )}
 
-      {!expanded && (
-        <div style={{ fontSize: "0.6rem", opacity: 0.3 }}>
-          {lang === "jp" ? "詳細▾" : "detail▾"}
-        </div>
-      )}
+      {/* Toggle hint */}
+      <div style={{ fontSize: "0.6rem", opacity: 0.3, marginTop: "1px" }}>
+        {expanded
+          ? (lang === "jp" ? "閉じる" : "close")
+          : (lang === "jp" ? "詳細▾" : "detail▾")}
+      </div>
     </div>
   );
 }
