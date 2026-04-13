@@ -29,7 +29,9 @@ function calcCapacity(attractions: PlacedAttraction[]): number {
 }
 
 function pickInitialPos(): { x: number; z: number } {
-  return { x: (Math.random() - 0.5) * 16, z: -10 + Math.random() * 4 };
+  // Keep x off-center so the entrance walkway doesn't pass straight through the attraction
+  const side = Math.random() < 0.5 ? -1 : 1;
+  return { x: side * (6 + Math.random() * 8), z: -12 + Math.random() * 4 };
 }
 
 function initialState() {

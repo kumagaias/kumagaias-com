@@ -107,8 +107,11 @@ export default function ShopPanel({ money, placingShopType, onSelect, expanded, 
                     {lang === "jp" ? entry.name : entry.nameEn}
                   </div>
                   <div style={{ fontSize: "0.68rem", opacity: 0.7 }}>
-                    ${entry.cost} · +{entry.revenueRate}$/
-                    {lang === "jp" ? "客" : "visitor"} · {lang === "jp" ? "維持" : "maint"}${entry.maintenance}
+                    ${entry.cost}
+                    {" · "}
+                    <span style={{ color: "#7dffb3" }}>+{entry.revenueRate}$/{lang === "jp" ? "客" : "visitor"}</span>
+                    {" · "}
+                    <span style={{ color: "#ff7d7d" }}>{lang === "jp" ? "維持" : "maint"}${entry.maintenance}</span>
                   </div>
                 </div>
               </button>

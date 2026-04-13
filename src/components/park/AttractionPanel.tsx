@@ -113,13 +113,18 @@ export default function AttractionPanel({ money, placingType, onSelect, attracti
                     {lang === "jp" ? entry.name : entry.nameEn}
                   </div>
                   <div style={{ fontSize: "0.68rem", opacity: 0.7 }}>
-                    ${entry.cost} · 👥+{effectiveVisitors}
-                    {hasPenalty && (
-                      <span style={{ color: "#ff4444", fontWeight: 700, marginLeft: "3px" }}>
-                        ↓{(Math.pow(0.5, existingCount) * 100).toFixed(0)}%
-                      </span>
-                    )}
-                    {" · "}{lang === "jp" ? "維持" : "maint"}${entry.maintenance}
+                    ${entry.cost}
+                    {" · "}
+                    <span style={{ color: "#7dffb3" }}>
+                      👥+{effectiveVisitors}
+                      {hasPenalty && (
+                        <span style={{ color: "#ff4444", fontWeight: 700, marginLeft: "3px" }}>
+                          ↓{(Math.pow(0.5, existingCount) * 100).toFixed(0)}%
+                        </span>
+                      )}
+                    </span>
+                    {" · "}
+                    <span style={{ color: "#ff7d7d" }}>{lang === "jp" ? "維持" : "maint"}${entry.maintenance}</span>
                   </div>
                 </div>
               </button>
