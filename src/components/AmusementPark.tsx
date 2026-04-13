@@ -91,7 +91,7 @@ export default function AmusementPark() {
   const [shopPanelOpen, setShopPanelOpen] = useState(false);
   const [weather, setWeather] = useState<WeatherType>("sunny");
   const weatherRef = useRef<WeatherType>("sunny");
-  const celebrateTriggerRef = useRef<(() => void) | null>(null);
+  const celebrateTriggerRef = useRef<((level?: number) => void) | null>(null);
   const nextMilestoneRef = useRef(0);
   const [milestoneMsg, setMilestoneMsg] = useState<string | null>(null);
   const milestoneMsgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -131,7 +131,8 @@ export default function AmusementPark() {
         const milestone = MILESTONES[nextMilestoneRef.current];
         if (milestone !== undefined && newTotal >= milestone) {
           nextMilestoneRef.current += 1;
-          setTimeout(() => celebrateTriggerRef.current?.(), 0);
+          const level = nextMilestoneRef.current - 1;
+          setTimeout(() => celebrateTriggerRef.current?.(level), 0);
           const msg = lang === "jp"
             ? `累計 ${milestone.toLocaleString()} 人達成！おめでとう！🎉`
             : `${milestone.toLocaleString()} total visitors! Congrats! 🎉`;

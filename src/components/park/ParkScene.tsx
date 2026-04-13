@@ -141,7 +141,7 @@ interface Props {
   onPlaceShop: (x: number, z: number) => void;
   onDemolishShop: (id: string) => void;
   onWeatherChange: (w: WeatherType) => void;
-  celebrateTriggerRef: React.MutableRefObject<(() => void) | null>;
+  celebrateTriggerRef: React.MutableRefObject<((level?: number) => void) | null>;
   currentVisitors: number;
 }
 
@@ -709,18 +709,22 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       }
     };
 
-    const triggerCelebration = () => {
-      // Launch 8 fireworks with staggered delays
-      for (let i = 0; i < 8; i++) {
-        setTimeout(() => launchFirework((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 10), i * 400);
+    const triggerCelebration = (level = 0) => {
+      // Scale fireworks and balloons with milestone level
+      const fwCount = Math.min(30, 8 + level * 4);
+      const fwDelay = Math.max(120, 380 - level * 25);
+      const extraBalloons = Math.min(40, 12 + level * 5);
+      // Launch fireworks with staggered delays
+      for (let i = 0; i < fwCount; i++) {
+        setTimeout(() => launchFirework((Math.random() - 0.5) * 24, (Math.random() - 0.5) * 12), i * fwDelay);
       }
       // Release a burst of balloons
       for (const b of balloons) {
         b.mesh.visible = true;
         b.mesh.position.set(b.x + (Math.random() - 0.5) * 10, b.startY, b.z + (Math.random() - 0.5) * 6);
       }
-      // Spawn 12 extra celebration balloons that fade out
-      for (let i = 0; i < 12; i++) {
+      // Spawn extra celebration balloons that fade out
+      for (let i = 0; i < extraBalloons; i++) {
         const color = balloonColors[i % balloonColors.length];
         const cbm = new THREE.Mesh(
           new THREE.SphereGeometry(0.28, 10, 10),
