@@ -29,7 +29,7 @@ function calcCapacity(attractions: PlacedAttraction[]): number {
 }
 
 function pickInitialPos(): { x: number; z: number } {
-  return { x: (Math.random() - 0.5) * 20, z: -8 + Math.random() * 6 };
+  return { x: (Math.random() - 0.5) * 16, z: -10 + Math.random() * 4 };
 }
 
 function initialState() {
@@ -52,6 +52,8 @@ export default function AmusementPark() {
   const [placingType, setPlacingType] = useState<AttractionType | null>(null);
   const [placingShopType, setPlacingShopType] = useState<ShopType | null>(null);
   const [demolishing, setDemolishing] = useState(false);
+  const [attrPanelOpen, setAttrPanelOpen] = useState(false);
+  const [shopPanelOpen, setShopPanelOpen] = useState(false);
 
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; }, [state]);
@@ -88,9 +90,9 @@ export default function AmusementPark() {
     const cost = CATALOG[placingType].cost;
     setState((s) => {
       if (s.money < cost) return s;
-      if (z >= 9.5 || Math.abs(x) >= 44) return s;
-      if (s.attractions.some((a) => Math.hypot(a.x - x, a.z - z) < 5)) return s;
-      if (s.shops.some((sh) => Math.hypot(sh.x - x, sh.z - z) < 4)) return s;
+      if (z >= 8.5 || Math.abs(x) >= 44) return s;
+      if (s.attractions.some((a) => Math.hypot(a.x - x, a.z - z) < 7)) return s;
+      if (s.shops.some((sh) => Math.hypot(sh.x - x, sh.z - z) < 5)) return s;
       return {
         ...s,
         money: s.money - cost,
@@ -187,11 +189,15 @@ export default function AmusementPark() {
           placingType={placingType}
           onSelect={handleSelectAttraction}
           attractions={attractions}
+          expanded={attrPanelOpen}
+          onToggle={() => { setAttrPanelOpen(v => !v); setShopPanelOpen(false); }}
         />
         <ShopPanel
           money={money}
           placingShopType={placingShopType}
           onSelect={handleSelectShop}
+          expanded={shopPanelOpen}
+          onToggle={() => { setShopPanelOpen(v => !v); setAttrPanelOpen(false); }}
         />
         {/* Demolish button */}
         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>

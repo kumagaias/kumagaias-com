@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { SHOP_CATALOG, ALL_SHOP_TYPES } from "./catalog";
 import type { ShopType } from "./types";
 import { useLang } from "../../contexts/LanguageContext";
@@ -7,17 +6,18 @@ interface Props {
   money: number;
   placingShopType: ShopType | null;
   onSelect: (type: ShopType | null) => void;
+  expanded: boolean;
+  onToggle: () => void;
 }
 
-export default function ShopPanel({ money, placingShopType, onSelect }: Props) {
-  const [expanded, setExpanded] = useState(false);
+export default function ShopPanel({ money, placingShopType, onSelect, expanded, onToggle }: Props) {
   const { lang } = useLang();
 
   return (
     <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", gap: "8px" }}>
       {/* Toggle button */}
       <button
-        onClick={() => setExpanded((e) => !e)}
+        onClick={onToggle}
         style={{
           padding: "10px 18px",
           borderRadius: "10px",

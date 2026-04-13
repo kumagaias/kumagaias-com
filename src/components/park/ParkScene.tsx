@@ -608,10 +608,10 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
           ghost.position.set(pt.x, 0.06, pt.z);
           ghost.visible = true;
           const isShop = !!placingShopTypeRef.current;
-          const attrDist = isShop ? 4 : 5;
-          const shopDist = isShop ? 3 : 4;
+          const attrDist = isShop ? 5 : 7;
+          const shopDist = isShop ? 4 : 5;
           const valid =
-            pt.z < 9.5 &&
+            pt.z < 8.5 &&
             Math.abs(pt.x) < 44 &&
             attractionsRef.current.every((a) => Math.hypot(a.x - pt.x, a.z - pt.z) > attrDist) &&
             shopsRef.current.every((s) => Math.hypot(s.x - pt.x, s.z - pt.z) > shopDist);

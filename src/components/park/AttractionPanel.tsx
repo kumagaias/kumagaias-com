@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { CATALOG, ALL_ATTRACTION_TYPES } from "./catalog";
 import type { AttractionType, PlacedAttraction } from "./types";
 import { useLang } from "../../contexts/LanguageContext";
@@ -8,10 +7,11 @@ interface Props {
   placingType: AttractionType | null;
   onSelect: (type: AttractionType | null) => void;
   attractions: PlacedAttraction[];
+  expanded: boolean;
+  onToggle: () => void;
 }
 
-export default function AttractionPanel({ money, placingType, onSelect, attractions }: Props) {
-  const [expanded, setExpanded] = useState(false);
+export default function AttractionPanel({ money, placingType, onSelect, attractions, expanded, onToggle }: Props) {
   const { lang } = useLang();
 
   const btnBase: React.CSSProperties = {
@@ -32,7 +32,7 @@ export default function AttractionPanel({ money, placingType, onSelect, attracti
     <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", gap: "8px" }}>
       {/* Toggle button */}
       <button
-        onClick={() => setExpanded((e) => !e)}
+        onClick={onToggle}
         style={{
           ...btnBase,
           border: expanded ? "1px solid rgba(31,143,255,0.55)" : "1px solid rgba(255,255,255,0.2)",
@@ -45,7 +45,7 @@ export default function AttractionPanel({ money, placingType, onSelect, attracti
       {/* Slide-out panel */}
       <div
         style={{
-          maxWidth: expanded ? "220px" : "0",
+          maxWidth: expanded ? "260px" : "0",
           maxHeight: expanded ? "70vh" : "0",
           opacity: expanded ? 1 : 0,
           overflow: "hidden",
@@ -59,7 +59,7 @@ export default function AttractionPanel({ money, placingType, onSelect, attracti
       >
         <div
           style={{
-            width: "200px",
+            width: "240px",
             padding: "10px",
             display: "flex",
             flexDirection: "column",
@@ -115,8 +115,8 @@ export default function AttractionPanel({ money, placingType, onSelect, attracti
                   <div style={{ fontSize: "0.68rem", opacity: 0.7 }}>
                     ${entry.cost} · 👥+{effectiveVisitors}
                     {hasPenalty && (
-                      <span style={{ color: "#ffaa44", marginLeft: "3px" }}>
-                        (×{(Math.pow(0.5, existingCount) * 100).toFixed(0)}%)
+                      <span style={{ color: "#ff4444", fontWeight: 700, marginLeft: "3px" }}>
+                        ↓{(Math.pow(0.5, existingCount) * 100).toFixed(0)}%
                       </span>
                     )}
                     {" · "}{lang === "jp" ? "維持" : "maint"}${entry.maintenance}
