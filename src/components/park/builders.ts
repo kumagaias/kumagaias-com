@@ -1,0 +1,371 @@
+import * as THREE from "three";
+import type { PlacedAttraction } from "./types";
+
+export type Animator = (t: number) => void;
+
+export interface BuildResult {
+  animator: Animator;
+  clickTargets: THREE.Object3D[];
+  burstColor: number;
+}
+
+function buildFerrisWheel(container: THREE.Object3D, x: number, z: number): BuildResult {
+  const wheelGroup = new THREE.Group();
+  wheelGroup.position.set(x, 0, z);
+  const poleMat = new THREE.MeshLambertMaterial({ color: 0xcc4444 });
+  const ringMat = new THREE.MeshLambertMaterial({ color: 0xffdd00 });
+  [-1.2, 1.2].forEach((px) => {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 8), poleMat);
+    pole.position.set(px, 4, 0);
+    wheelGroup.add(pole);
+  });
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(3.5, 0.12, 8, 48), ringMat);
+  ring.position.set(0, 8, 0);
+  wheelGroup.add(ring);
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.5), ringMat);
+    spoke.position.set(0, 8, 0);
+    spoke.rotation.z = angle + Math.PI / 2;
+    spoke.translateY(1.75);
+    wheelGroup.add(spoke);
+  }
+  const gondolaColors = [0xff6699, 0x66ccff, 0xffaa33, 0x99ff66, 0xcc66ff, 0xff4444, 0x44ffee, 0xffee44];
+  const gondolas: THREE.Mesh[] = [];
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    const gondola = new THREE.Mesh(
+      new THREE.BoxGeometry(0.6, 0.5, 0.4),
+      new THREE.MeshLambertMaterial({ color: gondolaColors[i] })
+    );
+    gondola.position.set(x + Math.cos(angle) * 3.5, 8 + Math.sin(angle) * 3.5, z);
+    gondolas.push(gondola);
+    container.add(gondola);
+  }
+  container.add(wheelGroup);
+
+  const animator: Animator = (t) => {
+    ring.rotation.z += 0.005;
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2 + t * 0.005 * Math.PI * 2;
+      gondolas[i].position.set(
+        wheelGroup.position.x + Math.cos(angle) * 3.5,
+        8 + Math.sin(angle) * 3.5,
+        wheelGroup.position.z
+      );
+      gondolas[i].rotation.z = -angle;
+    }
+  };
+
+  return { animator, clickTargets: [ring, ...gondolas], burstColor: 0xffdd00 };
+}
+
+function buildRollerCoaster(container: THREE.Object3D, x: number, z: number): BuildResult {
+  const coasterGroup = new THREE.Group();
+  coasterGroup.position.set(x, 0, z);
+  const trackMat = new THREE.MeshLambertMaterial({ color: 0xaaaaaa });
+  const points: THREE.Vector3[] = [];
+  for (let i = 0; i <= 60; i++) {
+    const t2 = (i / 60) * Math.PI * 2;
+    points.push(new THREE.Vector3(
+      Math.cos(t2) * 5,
+      2 + Math.sin(t2 * 2) * 2 + (t2 < Math.PI ? t2 * 0.5 : (Math.PI * 2 - t2) * 0.5),
+      Math.sin(t2) * 3
+    ));
+  }
+  const curve = new THREE.CatmullRomCurve3(points, true);
+  coasterGroup.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 120, 0.08, 6, true), trackMat));
+  const cart = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.35, 0.4), new THREE.MeshLambertMaterial({ color: 0xff3300 }));
+  coasterGroup.add(cart);
+  container.add(coasterGroup);
+
+  const animator: Animator = (t) => {
+    const cpos = curve.getPoint((t * 0.05) % 1);
+    const tangent = curve.getTangent((t * 0.05) % 1);
+    cart.position.copy(cpos);
+    cart.lookAt(cpos.clone().add(tangent));
+  };
+
+  return { animator, clickTargets: [cart], burstColor: 0xff3300 };
+}
+
+function buildCoffeeCups(container: THREE.Object3D, x: number, z: number): BuildResult {
+  const cupGroup = new THREE.Group();
+  cupGroup.position.set(x, 0, z);
+  cupGroup.add(new THREE.Mesh(
+    new THREE.CylinderGeometry(2.5, 2.5, 0.15, 32),
+    new THREE.MeshLambertMaterial({ color: 0xee88ff })
+  ));
+  const cupColors = [0xff4488, 0x44aaff, 0xffcc00, 0x44ff88];
+  const cups: { outer: THREE.Group; inner: THREE.Group }[] = [];
+  const cupMeshes: THREE.Mesh[] = [];
+  for (let i = 0; i < 4; i++) {
+    const angle = (i / 4) * Math.PI * 2;
+    const outer = new THREE.Group();
+    outer.position.set(Math.cos(angle) * 1.4, 0.15, Math.sin(angle) * 1.4);
+    const inner = new THREE.Group();
+    const cupMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.35, 0.25, 0.5, 16),
+      new THREE.MeshLambertMaterial({ color: cupColors[i] })
+    );
+    cupMesh.position.y = 0.25;
+    inner.add(cupMesh);
+    inner.add(new THREE.Mesh(
+      new THREE.CylinderGeometry(0.45, 0.45, 0.08, 16),
+      new THREE.MeshLambertMaterial({ color: 0xffffff })
+    ));
+    outer.add(inner);
+    cupGroup.add(outer);
+    cups.push({ outer, inner });
+    cupMeshes.push(cupMesh);
+  }
+  container.add(cupGroup);
+
+  const animator: Animator = (t) => {
+    cupGroup.rotation.y += 0.008;
+    cups.forEach((c, i) => {
+      c.outer.rotation.y = t * 0.5 * (i % 2 === 0 ? 1 : -1);
+      c.inner.rotation.y = t * 1.2 * (i % 2 === 0 ? -1 : 1);
+    });
+  };
+
+  return { animator, clickTargets: cupMeshes, burstColor: 0xee88ff };
+}
+
+function buildMerryGoRound(container: THREE.Object3D, x: number, z: number): BuildResult {
+  const merryGroup = new THREE.Group();
+  merryGroup.position.set(x, 0, z);
+  merryGroup.add(new THREE.Mesh(
+    new THREE.CylinderGeometry(0.1, 0.1, 4),
+    new THREE.MeshLambertMaterial({ color: 0xffaacc })
+  ));
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(2.2, 1.2, 16), new THREE.MeshLambertMaterial({ color: 0xff66aa }));
+  roof.position.y = 3.6;
+  merryGroup.add(roof);
+  merryGroup.add(new THREE.Mesh(
+    new THREE.CylinderGeometry(2, 2, 0.15, 32),
+    new THREE.MeshLambertMaterial({ color: 0xffddee })
+  ));
+  const horseColors = [0xffffff, 0xffcc88, 0xaaddff, 0xffaacc];
+  const horses: { group: THREE.Group; baseY: number; phase: number }[] = [];
+  for (let i = 0; i < 4; i++) {
+    const angle = (i / 4) * Math.PI * 2;
+    const hg = new THREE.Group();
+    hg.position.set(Math.cos(angle) * 1.4, 0.5, Math.sin(angle) * 1.4);
+    hg.add(new THREE.Mesh(
+      new THREE.CylinderGeometry(0.04, 0.04, 2),
+      new THREE.MeshLambertMaterial({ color: 0xdddddd })
+    ));
+    const hbody = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.2), new THREE.MeshLambertMaterial({ color: horseColors[i] }));
+    hbody.position.y = 0.8;
+    hg.add(hbody);
+    const hhead = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.15), new THREE.MeshLambertMaterial({ color: horseColors[i] }));
+    hhead.position.set(0.3, 1.05, 0);
+    hg.add(hhead);
+    merryGroup.add(hg);
+    horses.push({ group: hg, baseY: 0.5, phase: (i / 4) * Math.PI * 2 });
+  }
+  container.add(merryGroup);
+
+  const animator: Animator = (t) => {
+    merryGroup.rotation.y += 0.012;
+    horses.forEach((h) => {
+      h.group.position.y = h.baseY + Math.sin(t * 2 + h.phase) * 0.3;
+    });
+  };
+
+  const horseMeshes = horses.map(h => h.group.children[1] as THREE.Mesh);
+  return { animator, clickTargets: [roof, ...horseMeshes], burstColor: 0xff66aa };
+}
+
+function buildShootingGallery(container: THREE.Object3D, x: number, z: number): BuildResult {
+  const shootGroup = new THREE.Group();
+  shootGroup.position.set(x, 0, z);
+  const boothMat = new THREE.MeshLambertMaterial({ color: 0xcc8844 });
+  const backWall = new THREE.Mesh(new THREE.BoxGeometry(3, 2.5, 0.2), boothMat);
+  backWall.position.set(0, 1.25, 0);
+  shootGroup.add(backWall);
+  const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.5, 1.5), boothMat);
+  leftWall.position.set(-1.5, 1.25, -0.7);
+  shootGroup.add(leftWall);
+  const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.5, 1.5), boothMat);
+  rightWall.position.set(1.5, 1.25, -0.7);
+  shootGroup.add(rightWall);
+  const targetColors = [0xff2222, 0x2222ff, 0x22ff22, 0xffff22, 0xff22ff];
+  const targets: { mesh: THREE.Mesh; fallen: boolean; resetT: number }[] = [];
+  for (let i = 0; i < 5; i++) {
+    const target = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.2, 0.2, 0.08, 16),
+      new THREE.MeshLambertMaterial({ color: targetColors[i] })
+    );
+    target.position.set(-1 + i * 0.5, 1.8, -0.1);
+    shootGroup.add(target);
+    targets.push({ mesh: target, fallen: false, resetT: 0 });
+  }
+  container.add(shootGroup);
+
+  const animator: Animator = () => {
+    targets.forEach((tgt) => {
+      if (tgt.fallen) {
+        tgt.mesh.rotation.x = Math.PI / 2;
+        tgt.resetT -= 0.016;
+        if (tgt.resetT <= 0) { tgt.fallen = false; tgt.mesh.rotation.x = 0; }
+      }
+    });
+  };
+
+  const targetMeshes = targets.map(t => t.mesh);
+  return { animator, clickTargets: targetMeshes, burstColor: 0xffff00 };
+}
+
+function buildMiniTrain(container: THREE.Object3D, x: number, z: number): BuildResult {
+  const trainGroup = new THREE.Group();
+  trainGroup.position.set(x, 0, z);
+  const trainRadius = 5;
+  const trackPoints: THREE.Vector3[] = [];
+  for (let i = 0; i <= 64; i++) {
+    const a = (i / 64) * Math.PI * 2;
+    trackPoints.push(new THREE.Vector3(Math.cos(a) * trainRadius, 0.05, Math.sin(a) * trainRadius));
+  }
+  const trainCurve = new THREE.CatmullRomCurve3(trackPoints, true);
+  trainGroup.add(new THREE.Mesh(
+    new THREE.TubeGeometry(trainCurve, 128, 0.06, 6, true),
+    new THREE.MeshLambertMaterial({ color: 0x888888 })
+  ));
+  const trainCarColors = [0xff4400, 0xffaa00, 0x44cc00];
+  const trainCars: THREE.Mesh[] = [];
+  for (let i = 0; i < 3; i++) {
+    const car = new THREE.Mesh(
+      new THREE.BoxGeometry(0.7, 0.4, 0.5),
+      new THREE.MeshLambertMaterial({ color: trainCarColors[i] })
+    );
+    container.add(car);
+    trainCars.push(car);
+  }
+  container.add(trainGroup);
+
+  const animator: Animator = (t) => {
+    for (let i = 0; i < 3; i++) {
+      const offset = (t * 0.03 + i * 0.05) % 1;
+      const tp = trainCurve.getPoint(offset).add(trainGroup.position);
+      const tt = trainCurve.getTangent(offset);
+      trainCars[i].position.copy(tp);
+      trainCars[i].position.y = 0.25;
+      trainCars[i].lookAt(tp.clone().add(tt));
+    }
+  };
+
+  return { animator, clickTargets: trainCars, burstColor: 0xff4400 };
+}
+
+function buildDropTower(container: THREE.Object3D, x: number, z: number): BuildResult {
+  const dropGroup = new THREE.Group();
+  dropGroup.position.set(x, 0, z);
+  dropGroup.add(new THREE.Mesh(
+    new THREE.CylinderGeometry(0.3, 0.4, 9, 12),
+    new THREE.MeshLambertMaterial({ color: 0xaaaaaa })
+  ));
+  const dropTopCap = new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.2, 12), new THREE.MeshLambertMaterial({ color: 0xff2244 }));
+  dropTopCap.position.y = 9.6;
+  dropGroup.add(dropTopCap);
+  const dropRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.85, 0.14, 8, 24),
+    new THREE.MeshLambertMaterial({ color: 0xff8800 })
+  );
+  dropRing.position.y = 1;
+  dropGroup.add(dropRing);
+  const dropSeatColors = [0xff4488, 0x44aaff, 0xffcc00, 0x44ff88, 0xcc44ff, 0xff8844];
+  const dropSeatMeshes: THREE.Mesh[] = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const seat = new THREE.Mesh(
+      new THREE.BoxGeometry(0.28, 0.32, 0.22),
+      new THREE.MeshLambertMaterial({ color: dropSeatColors[i] })
+    );
+    seat.position.set(Math.cos(a) * 0.85, 0, Math.sin(a) * 0.85);
+    dropRing.add(seat);
+    dropSeatMeshes.push(seat);
+  }
+  container.add(dropGroup);
+
+  const animator: Animator = (t) => {
+    const dropPhase = (t * 0.35) % 1;
+    if (dropPhase < 0.6) {
+      dropRing.position.y = 1 + (dropPhase / 0.6) * 7;
+    } else {
+      const fall = (dropPhase - 0.6) / 0.4;
+      dropRing.position.y = 8 - fall * fall * 7;
+    }
+    dropRing.rotation.y += 0.015;
+  };
+
+  return { animator, clickTargets: [dropRing, ...dropSeatMeshes], burstColor: 0xff8800 };
+}
+
+function buildSwingCarousel(container: THREE.Object3D, x: number, z: number): BuildResult {
+  const swingGroup = new THREE.Group();
+  swingGroup.position.set(x, 0, z);
+  swingGroup.add(new THREE.Mesh(
+    new THREE.CylinderGeometry(0.15, 0.2, 5, 12),
+    new THREE.MeshLambertMaterial({ color: 0x44aaff })
+  ));
+  const baseDisk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.5, 0.5, 0.2, 16),
+    new THREE.MeshLambertMaterial({ color: 0x44aaff })
+  );
+  swingGroup.add(baseDisk);
+  const swingCanopy = new THREE.Mesh(new THREE.ConeGeometry(2.5, 1.0, 16), new THREE.MeshLambertMaterial({ color: 0xff6644 }));
+  swingCanopy.position.y = 5.5;
+  swingGroup.add(swingCanopy);
+  const swingTop = new THREE.Group();
+  swingTop.position.y = 5;
+  const swingArms: THREE.Group[] = [];
+  const swingChairColors = [0xff4444, 0x44aaff, 0xffcc00, 0x44ff88, 0xff44aa, 0xaa44ff, 0xff8800, 0x44ffee];
+  const chairMeshes: THREE.Mesh[] = [];
+  for (let i = 0; i < 8; i++) {
+    const pivot = new THREE.Group();
+    pivot.rotation.y = (i / 8) * Math.PI * 2;
+    const arm = new THREE.Group();
+    arm.position.set(1.5, 0, 0);
+    arm.rotation.z = 0.25;
+    const chain = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.02, 0.02, 1.2, 4),
+      new THREE.MeshLambertMaterial({ color: 0xbbbbbb })
+    );
+    chain.position.y = -0.6;
+    arm.add(chain);
+    const chairMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.28, 0.22, 0.22),
+      new THREE.MeshLambertMaterial({ color: swingChairColors[i] })
+    );
+    chairMesh.position.y = -1.3;
+    arm.add(chairMesh);
+    pivot.add(arm);
+    swingTop.add(pivot);
+    swingArms.push(arm);
+    chairMeshes.push(chairMesh);
+  }
+  swingGroup.add(swingTop);
+  container.add(swingGroup);
+
+  const animator: Animator = (t) => {
+    swingTop.rotation.y += 0.018;
+    const swingLean = 0.22 + Math.sin(t * 0.4) * 0.08;
+    swingArms.forEach((arm) => { arm.rotation.z = swingLean; });
+  };
+
+  return { animator, clickTargets: chairMeshes, burstColor: 0xff6644 };
+}
+
+export function buildAttraction(container: THREE.Object3D, a: PlacedAttraction): BuildResult {
+  switch (a.type) {
+    case "ferrisWheel":     return buildFerrisWheel(container, a.x, a.z);
+    case "rollerCoaster":   return buildRollerCoaster(container, a.x, a.z);
+    case "coffeeCups":      return buildCoffeeCups(container, a.x, a.z);
+    case "merryGoRound":    return buildMerryGoRound(container, a.x, a.z);
+    case "shootingGallery": return buildShootingGallery(container, a.x, a.z);
+    case "miniTrain":       return buildMiniTrain(container, a.x, a.z);
+    case "dropTower":       return buildDropTower(container, a.x, a.z);
+    case "swingCarousel":   return buildSwingCarousel(container, a.x, a.z);
+  }
+}
