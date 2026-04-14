@@ -9,7 +9,7 @@ import { CATALOG, SHOP_CATALOG } from "./catalog";
 // 10-minute day/night cycle (600 s). t increments ~0.01/frame at 60fps → 0.6/s → CYCLE=360 frames/cycle
 const CYCLE_T = 360;
 const DAY   = { sky: 0x87ceeb, ground: 0x90ee90, light: 0xffffff, ambient: 0xffd580 };
-const NIGHT = { sky: 0x0a0a2e, ground: 0x2d4a1e, light: 0x8888ff, ambient: 0x55558a };
+const NIGHT = { sky: 0x0a0a2e, ground: 0x2d4a1e, light: 0x8888ff, ambient: 0x7878b0 };
 
 function makePerson(color: number): THREE.Group {
   const g = new THREE.Group();
@@ -781,6 +781,39 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
         addLamp(-1.8, lz, false);
         addLamp( 1.8, lz, true);
       }
+
+      // Small lamps — along the near/far road sidewalks (shorter pole, warm white)
+      const smallPoleMat = new THREE.MeshLambertMaterial({ color: 0x667788 });
+      const smallLampMat = new THREE.MeshLambertMaterial({ color: 0xfff0cc, emissive: 0xffee88, emissiveIntensity: 0 });
+      smallLampMat.userData.ni = 0.9;
+      nightMatsRef.current.push(smallLampMat);
+      const smallGlowMat = new THREE.MeshBasicMaterial({ color: 0xffeeaa, transparent: true, opacity: 0 });
+
+      const addSmallLamp = (lx: number, lz: number) => {
+        const lp = new THREE.Group();
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.06, 2.6, 7), smallPoleMat);
+        pole.position.y = 1.3;
+        lp.add(pole);
+        const globe = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), smallLampMat);
+        globe.position.y = 2.65;
+        lp.add(globe);
+        const glow = new THREE.Mesh(new THREE.SphereGeometry(0.12, 7, 7), smallGlowMat);
+        glow.position.y = 2.65;
+        lp.add(glow);
+        const pl = new THREE.PointLight(0xffeeaa, 0, 4.5);
+        pl.userData.maxI = 0.8;
+        pl.position.y = 2.65;
+        lp.add(pl);
+        nightLightsRef.current.push(pl);
+        lp.position.set(lx, 0, lz);
+        scene.add(lp);
+      };
+
+      // Near sidewalk (z≈11.4) and far sidewalk (z≈16.6), every 8 units
+      for (let lx = -40; lx <= 40; lx += 8) {
+        addSmallLamp(lx, 11.0);
+        addSmallLamp(lx, 17.0);
+      }
     }
 
     // Weather system
@@ -1175,7 +1208,8 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
 
     // Animation loop
     let frameId: number;
-    let t = 0;
+    // Start at cyclePhase≈0.3 (morning sun, ~9 AM equivalent) instead of t=0 (midnight)
+    let t = CYCLE_T * 0.3;
     const animate = () => {
       frameId = requestAnimationFrame(animate);
       t += 0.01;
@@ -1208,7 +1242,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
 
       // Ambient & directional light — night ambient boosted so park stays visible
       ambientLight.color.copy(cDayAmb).lerp(cNightAmb, Math.min(1, nightFactor));
-      ambientLight.intensity = 0.8 + nightFactor * 0.6; // 0.8 (day) → 1.4 (night)
+      ambientLight.intensity = 0.8 + nightFactor * 1.0; // 0.8 (day) → 1.8 (night)
       sunLight.color.copy(cDayLight).lerp(cNightLight, Math.min(1, nightFactor));
       sunLight.intensity = 0.15 + Math.max(0, sunHeight) * 1.05;
 
