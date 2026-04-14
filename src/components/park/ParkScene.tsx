@@ -9,7 +9,7 @@ import { CATALOG, SHOP_CATALOG } from "./catalog";
 // 10-minute day/night cycle (600 s). t increments ~0.01/frame at 60fps → 0.6/s → CYCLE=360 frames/cycle
 const CYCLE_T = 360;
 const DAY   = { sky: 0x87ceeb, ground: 0x90ee90, light: 0xffffff, ambient: 0xffd580 };
-const NIGHT = { sky: 0x0a0a2e, ground: 0x2d4a1e, light: 0x8888ff, ambient: 0x222244 };
+const NIGHT = { sky: 0x0a0a2e, ground: 0x2d4a1e, light: 0x8888ff, ambient: 0x55558a };
 
 function makePerson(color: number): THREE.Group {
   const g = new THREE.Group();
@@ -1206,8 +1206,9 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       else if (currentWeather === "cloudy") skyCurrent.lerp(cCloudSky, 0.35);
       (scene.fog as THREE.Fog).color.copy(skyCurrent);
 
-      // Ambient & directional light
+      // Ambient & directional light — night ambient boosted so park stays visible
       ambientLight.color.copy(cDayAmb).lerp(cNightAmb, Math.min(1, nightFactor));
+      ambientLight.intensity = 0.8 + nightFactor * 0.6; // 0.8 (day) → 1.4 (night)
       sunLight.color.copy(cDayLight).lerp(cNightLight, Math.min(1, nightFactor));
       sunLight.intensity = 0.15 + Math.max(0, sunHeight) * 1.05;
 
