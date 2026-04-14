@@ -139,6 +139,8 @@ export default function AmusementPark() {
         setPlacingType(null);
         setPlacingShopType(null);
         setDemolishing(false);
+        setAttrPanelOpen(false);
+        setShopPanelOpen(false);
       }
     };
     window.addEventListener("keydown", onKeyDown);

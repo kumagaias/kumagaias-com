@@ -30,6 +30,13 @@ export const works: Work[] = [
     url: "https://gakkyu-alert.kumagaias.com/",
     githubUrl: "https://github.com/kumagaias/gakkyu-alert",
     screenshot: "/screenshot-gakkyu-alert.png",
+    screenshots: [
+      "/screenshot-gakkyu-alert.png",
+      "/screenshot-gakkyu-alert-1.png",
+      "/screenshot-gakkyu-alert-2.png",
+      "/screenshot-gakkyu-alert-4.png",
+      "/screenshot-gakkyu-alert-5.png",
+    ],
     techStack: ["React Native", "AWS", "Claude Code", "Kiro"],
     types: ["web", "iOS"],
     releaseDate: "2026.4",
