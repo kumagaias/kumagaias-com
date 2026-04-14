@@ -4,13 +4,14 @@ import { useLang } from "../../contexts/LanguageContext";
 
 interface Props {
   money: number;
+  totalVisitors: number;
   placingShopType: ShopType | null;
   onSelect: (type: ShopType | null) => void;
   expanded: boolean;
   onToggle: () => void;
 }
 
-export default function ShopPanel({ money, placingShopType, onSelect, expanded, onToggle }: Props) {
+export default function ShopPanel({ money, totalVisitors, placingShopType, onSelect, expanded, onToggle }: Props) {
   const { lang } = useLang();
 
   return (
@@ -73,12 +74,13 @@ export default function ShopPanel({ money, placingShopType, onSelect, expanded, 
           )}
           {ALL_SHOP_TYPES.map((type) => {
             const entry = SHOP_CATALOG[type];
-            const canAfford = money >= entry.cost;
+            const isLocked = entry.unlockAt !== undefined && totalVisitors < entry.unlockAt;
+            const canAfford = !isLocked && money >= entry.cost;
             const isSelected = placingShopType === type;
             return (
               <button
                 key={type}
-                onClick={() => onSelect(isSelected ? null : type)}
+                onClick={() => !isLocked && onSelect(isSelected ? null : type)}
                 disabled={!canAfford}
                 style={{
                   display: "flex",
@@ -88,30 +90,38 @@ export default function ShopPanel({ money, placingShopType, onSelect, expanded, 
                   borderRadius: "8px",
                   border: isSelected
                     ? "2px solid #ffb830"
+                    : isLocked ? "1px solid rgba(255,255,255,0.07)"
                     : "1px solid rgba(255,255,255,0.14)",
                   background: isSelected
                     ? "rgba(255,180,30,0.3)"
-                    : canAfford
-                    ? "rgba(255,255,255,0.08)"
-                    : "rgba(255,255,255,0.03)",
-                  color: canAfford ? "#fff" : "rgba(255,255,255,0.32)",
-                  cursor: canAfford ? "pointer" : "not-allowed",
+                    : isLocked ? "rgba(255,255,255,0.02)"
+                    : canAfford ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
+                  color: isLocked ? "rgba(255,255,255,0.2)" : canAfford ? "#fff" : "rgba(255,255,255,0.32)",
+                  cursor: isLocked ? "default" : canAfford ? "pointer" : "not-allowed",
                   textAlign: "left",
                   width: "100%",
                   flexShrink: 0,
                 }}
               >
-                <span style={{ fontSize: "1.2rem", flexShrink: 0 }}>{entry.emoji}</span>
+                <span style={{ fontSize: "1.2rem", flexShrink: 0 }}>{isLocked ? "🔒" : entry.emoji}</span>
                 <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
                   <div style={{ fontSize: "0.8rem", fontWeight: 600 }}>
                     {lang === "jp" ? entry.name : entry.nameEn}
                   </div>
                   <div style={{ fontSize: "0.68rem", opacity: 0.7 }}>
-                    ${entry.cost}
-                    {" · "}
-                    <span style={{ color: "#7dffb3" }}>+{entry.revenueRate}$/{lang === "jp" ? "客" : "visitor"}</span>
-                    {" · "}
-                    <span style={{ color: "#ff7d7d" }}>{lang === "jp" ? "維持" : "maint"}${entry.maintenance}</span>
+                    {isLocked ? (
+                      <span style={{ color: "#ffaa44" }}>
+                        {lang === "jp" ? `累計${entry.unlockAt!.toLocaleString()}人でアンロック` : `Unlock at ${entry.unlockAt!.toLocaleString()} visitors`}
+                      </span>
+                    ) : (
+                      <>
+                        ${entry.cost}
+                        {" · "}
+                        <span style={{ color: "#7dffb3" }}>+{entry.revenueRate}$/{lang === "jp" ? "客" : "visitor"}</span>
+                        {" · "}
+                        <span style={{ color: "#ff7d7d" }}>{lang === "jp" ? "維持" : "maint"}${entry.maintenance}</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </button>

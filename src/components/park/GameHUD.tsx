@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { useLang } from "../../contexts/LanguageContext";
 import type { WeatherType } from "./ParkScene";
+import type { AudienceType } from "./types";
 
 const WEATHER_ICON: Record<WeatherType, string> = { sunny: "☀️", cloudy: "⛅", rainy: "🌧️" };
 const WEATHER_LABEL_JP: Record<WeatherType, string> = { sunny: "晴れ", cloudy: "くもり", rainy: "雨" };
 const WEATHER_LABEL_EN: Record<WeatherType, string> = { sunny: "Sunny", cloudy: "Cloudy", rainy: "Rainy" };
+
+const AUDIENCE_EMOJI: Record<AudienceType, string> = { family: "👨‍👩‍👧", couple: "💑", solo: "🧍" };
+const AUDIENCE_LABEL_JP: Record<AudienceType, string> = { family: "子連れ", couple: "カップル", solo: "ひとり" };
 
 interface Props {
   money: number;
@@ -14,11 +18,14 @@ interface Props {
   maintenanceCost: number;
   grossPerTick: number;
   weather: WeatherType;
+  visitorGroups: Record<AudienceType, number>;
+  diversityBonus: number;
+  buzz: number;
   onSave: () => void;
   onRestart: () => void;
 }
 
-export default function GameHUD({ money, currentVisitors, totalVisitors, capacity, maintenanceCost, grossPerTick, weather, onSave, onRestart }: Props) {
+export default function GameHUD({ money, currentVisitors, totalVisitors, capacity, maintenanceCost, grossPerTick, weather, visitorGroups, diversityBonus, buzz, onSave, onRestart }: Props) {
   const { lang } = useLang();
   const [expanded, setExpanded] = useState(false);
   const [savedMsg, setSavedMsg] = useState(false);
@@ -31,6 +38,11 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
 
   const netPerTick = grossPerTick - maintenanceCost;
   const netColor     = netPerTick >= 0 ? "#7dffb3" : "#ff7d7d";
+
+  // Buzz: map [0.5, 1.0] → [0, 5] stars
+  const starsFilled = Math.round((buzz - 0.5) / 0.5 * 5);
+  const starsDisplay = "★".repeat(starsFilled) + "☆".repeat(5 - starsFilled);
+  const buzzColor = buzz >= 0.9 ? "#ffd700" : buzz >= 0.7 ? "#ffaa44" : buzz >= 0.55 ? "#ff8844" : "#ff5555";
   const sub: React.CSSProperties = {
     fontSize: "0.64rem", opacity: 0.5, textAlign: "right", lineHeight: 1.6,
   };
@@ -87,6 +99,50 @@ export default function GameHUD({ money, currentVisitors, totalVisitors, capacit
       {expanded && (
         <div style={sub}>
           👥 {totalVisitors.toLocaleString()} {lang === "jp" ? "累計" : "total"}
+        </div>
+      )}
+
+      {/* Buzz / hype stars — always visible */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "5px", marginTop: "3px" }}>
+        <span style={{ fontSize: "0.62rem", opacity: 0.55 }}>{lang === "jp" ? "話題性" : "Buzz"}</span>
+        <span style={{ fontSize: "0.82rem", color: buzzColor, letterSpacing: "-1px" }}>{starsDisplay}</span>
+      </div>
+      {expanded && (
+        <div style={{ ...sub, color: buzzColor }}>
+          {Math.round(buzz * 100)}%
+          {buzz <= 0.5
+            ? (lang === "jp" ? " ・ 新アトラクションで回復" : " · Add new ride to recover")
+            : buzz < 1.0
+            ? (lang === "jp" ? " ・ 徐々に飽きられています" : " · Hype fading…")
+            : (lang === "jp" ? " ・ 最高潮！" : " · Full hype!")}
+        </div>
+      )}
+
+      {/* Visitor group breakdown + diversity bonus */}
+      {expanded && (
+        <div style={{ marginTop: "6px", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "6px" }}>
+          <div style={{ fontSize: "0.62rem", opacity: 0.5, textAlign: "right", marginBottom: "3px" }}>
+            {lang === "jp" ? "来場者層" : "Audience"}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px", alignItems: "flex-end" }}>
+            {(["family", "couple", "solo"] as AudienceType[]).map(t => (
+              <div key={t} style={{ fontSize: "0.64rem", opacity: visitorGroups[t] > 0 ? 0.85 : 0.28 }}>
+                {AUDIENCE_EMOJI[t]} {lang === "jp" ? AUDIENCE_LABEL_JP[t] : t} {visitorGroups[t]}
+              </div>
+            ))}
+          </div>
+          <div style={{
+            fontSize: "0.64rem",
+            marginTop: "4px",
+            textAlign: "right",
+            color: diversityBonus > 1 ? "#7dffb3" : diversityBonus < 1 ? "#ff9977" : "rgba(255,255,255,0.5)",
+          }}>
+            {diversityBonus > 1
+              ? (lang === "jp" ? `✨ 多様性ボーナス +${Math.round((diversityBonus - 1) * 100)}%` : `✨ Diversity +${Math.round((diversityBonus - 1) * 100)}%`)
+              : diversityBonus < 1
+              ? (lang === "jp" ? "⚠ 偏り −10%" : "⚠ Skewed −10%")
+              : (lang === "jp" ? "来場者層バランス良好" : "Balanced")}
+          </div>
         </div>
       )}
 

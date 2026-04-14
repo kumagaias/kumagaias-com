@@ -303,7 +303,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 200);
-    const cameraTarget = new THREE.Vector3(0, 4, 0);
+    const cameraTarget = new THREE.Vector3(0, 4, -8);
     let cameraRadius = 30;
     let cameraTheta = 0;
     let cameraPhi = 1.4;
@@ -447,7 +447,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       }
     }
     // Central avenue — from just inside the gate to the far end of the park
-    addPath(0, 10.8, 0, -22, 2.2);
+    addPath(0, 10.8, 0, -32, 2.2);
 
     // Branch path with obstacle avoidance
     function addBranchPath(destX: number, destZ: number, skipId: string) {
@@ -735,7 +735,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
         addLamp(lx, 12.2, false);
         addLamp(lx, 15.8, true);
       }
-      for (let lz = 8; lz >= -20; lz -= 8) {
+      for (let lz = 8; lz >= -30; lz -= 8) {
         addLamp(-1.8, lz, false);
         addLamp( 1.8, lz, true);
       }

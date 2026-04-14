@@ -1,3 +1,5 @@
+export type AudienceType = "family" | "couple" | "solo";
+
 export type AttractionType =
   | "ferrisWheel"
   | "rollerCoaster"
@@ -6,7 +8,11 @@ export type AttractionType =
   | "shootingGallery"
   | "miniTrain"
   | "dropTower"
-  | "swingCarousel";
+  | "swingCarousel"
+  | "bumperCars"
+  | "hauntedHouse"
+  | "waterSlide"
+  | "darkRide";
 
 export interface PlacedAttraction {
   id: string;
@@ -15,7 +21,7 @@ export interface PlacedAttraction {
   z: number;
 }
 
-export type ShopType = "foodStall" | "cafe" | "restaurant";
+export type ShopType = "foodStall" | "cafe" | "restaurant" | "iceCreamShop" | "souvenir" | "hotel";
 
 export interface PlacedShop {
   id: string;
