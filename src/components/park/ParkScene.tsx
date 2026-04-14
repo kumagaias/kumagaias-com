@@ -141,10 +141,13 @@ interface Props {
   onWeatherChange: (w: WeatherType) => void;
   celebrateTriggerRef: React.MutableRefObject<((level?: number) => void) | null>;
   currentVisitors: number;
+  /** Raw capacity (without buzz/weather) — used for ratio calc denominator. */
   capacity: number;
+  /** Buzz-adjusted capacity — determines how many animated people to show. */
+  effectiveCapacity: number;
 }
 
-export default function ParkScene({ attractions, placingType, onPlace, onBalloonPop, demolishing, onDemolish, shops, placingShopType, onPlaceShop, onDemolishShop, onWeatherChange, celebrateTriggerRef, currentVisitors, capacity }: Props) {
+export default function ParkScene({ attractions, placingType, onPlace, onBalloonPop, demolishing, onDemolish, shops, placingShopType, onPlaceShop, onDemolishShop, onWeatherChange, celebrateTriggerRef, currentVisitors, capacity, effectiveCapacity }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const renderedRef = useRef<Set<string>>(new Set());
@@ -171,6 +174,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
   const celebrateRef = useRef<(() => void) | null>(null);
   const currentVisitorsRef = useRef(currentVisitors);
   const capacityRef = useRef(capacity);
+  const effectiveCapacityRef = useRef(effectiveCapacity);
   /** All PointLights that should turn on at night (lamps + attractions + shops). */
   const nightLightsRef = useRef<THREE.PointLight[]>([]);
   /** All materials with night emissive (from builders). emissiveIntensity scaled by nightFactor. */
@@ -194,6 +198,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
   useEffect(() => { onWeatherChangeRef.current = onWeatherChange; }, [onWeatherChange]);
   useEffect(() => { currentVisitorsRef.current = currentVisitors; }, [currentVisitors]);
   useEffect(() => { capacityRef.current = capacity; }, [capacity]);
+  useEffect(() => { effectiveCapacityRef.current = effectiveCapacity; }, [effectiveCapacity]);
   useEffect(() => { onPlaceShopRef.current = onPlaceShop; }, [onPlaceShop]);
   useEffect(() => { onDemolishShopRef.current = onDemolishShop; }, [onDemolishShop]);
 
@@ -355,6 +360,40 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
     const cNightLight = new THREE.Color(NIGHT.light);
     const cRainSky    = new THREE.Color(0x8899aa);
     const cCloudSky   = new THREE.Color(0xa0b8cc);
+
+    // Mountain range — far background, moon/sun rise from behind them
+    {
+      const mtDark  = new THREE.MeshLambertMaterial({ color: 0x3a4a55 });
+      const mtMid   = new THREE.MeshLambertMaterial({ color: 0x4a5a6a });
+      const mtLight = new THREE.MeshLambertMaterial({ color: 0x5a6e7e });
+      // [x, z, height, radius, material]
+      const peaks: [number, number, number, number, THREE.MeshLambertMaterial][] = [
+        // Back row (furthest)
+        [-90, -78, 46, 28, mtDark],
+        [-52, -75, 38, 23, mtDark],
+        [-18, -80, 52, 30, mtDark],
+        [ 22, -76, 44, 26, mtDark],
+        [ 60, -74, 36, 22, mtDark],
+        [ 95, -78, 48, 27, mtDark],
+        // Middle row
+        [-70, -68, 30, 19, mtMid],
+        [-35, -65, 24, 16, mtMid],
+        [  0, -70, 34, 20, mtMid],
+        [ 38, -66, 28, 18, mtMid],
+        [ 75, -68, 32, 20, mtMid],
+        // Front row (nearest mountains)
+        [-55, -60, 18, 13, mtLight],
+        [-22, -58, 14, 11, mtLight],
+        [ 15, -59, 20, 14, mtLight],
+        [ 50, -60, 16, 12, mtLight],
+        [ 82, -58, 18, 13, mtLight],
+      ];
+      for (const [mx, mz, h, r, mat] of peaks) {
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), mat);
+        cone.position.set(mx, h / 2 - 3, mz);
+        scene.add(cone);
+      }
+    }
 
     // Ground
     const groundMat = new THREE.MeshLambertMaterial({ color: DAY.ground });
@@ -1177,10 +1216,11 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
 
       // Sun position (arc from east to west)
       const sunAngle = cyclePhase * Math.PI * 2 - Math.PI / 2;
-      sunMesh.position.set(Math.cos(sunAngle) * 55, Math.sin(sunAngle) * 38, -35);
+      // Arc origin pushed to z=-75 so celestial bodies rise from behind the mountain range
+      sunMesh.position.set(Math.cos(sunAngle) * 70, Math.sin(sunAngle) * 48, -75);
       sunMesh.visible = Math.sin(sunAngle) > -0.08;
       // Moon on the opposite arc
-      moonMesh.position.set(-Math.cos(sunAngle) * 55, -Math.sin(sunAngle) * 38, -35);
+      moonMesh.position.set(-Math.cos(sunAngle) * 70, -Math.sin(sunAngle) * 48, -75);
       moonMesh.visible = -Math.sin(sunAngle) > -0.08;
 
       // Stars fade in at night
@@ -1243,7 +1283,9 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       // Manage people entry/exit — family groups count as 3 visitors
       const pax = (p: { isFamily: boolean }) => p.isFamily ? 3 : 1;
       const totalSlots   = people.reduce((s, p) => s + pax(p), 0); // 20×1 + 7×3 = 41
-      const targetPax    = Math.round((currentVisitorsRef.current / Math.max(1, capacityRef.current)) * totalSlots);
+      // Use effectiveCapacity (buzz-adjusted) as denominator so animated headcount
+      // fills up to totalSlots whenever the park is at its current effective capacity.
+      const targetPax    = Math.round((currentVisitorsRef.current / Math.max(1, effectiveCapacityRef.current)) * totalSlots);
       const activePax    = people.filter(p => p.active).reduce((s, p) => s + pax(p), 0);
       if (activePax < targetPax) {
         let need = targetPax - activePax;

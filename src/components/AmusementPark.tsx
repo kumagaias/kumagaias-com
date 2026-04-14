@@ -321,6 +321,9 @@ export default function AmusementPark() {
 
   // Derived values for HUD
   const capacity = calcCapacity(attractions);
+  // Buzz-adjusted capacity — used as denominator for animated people count in ParkScene.
+  // Weather is not available here, so only buzz is applied; ParkScene handles weather visually.
+  const effectiveCapacity = Math.max(1, Math.floor(capacity * buzz));
   const maintenanceCost =
     attractions.reduce((sum, a) => sum + CATALOG[a.type].maintenance, 0) +
     shops.reduce((sum, sh) => sum + SHOP_CATALOG[sh.type].maintenance, 0);
@@ -348,6 +351,7 @@ export default function AmusementPark() {
         celebrateTriggerRef={celebrateTriggerRef}
         currentVisitors={currentVisitors}
         capacity={capacity}
+        effectiveCapacity={effectiveCapacity}
       />
 
       {/* Left panel column: Build Attraction → Build Shop → Demolish */}
