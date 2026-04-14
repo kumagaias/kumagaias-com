@@ -311,7 +311,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
 
     const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 200);
     const cameraTarget = new THREE.Vector3(0, 4, -8);
-    let cameraRadius = 30;
+    let cameraRadius = 42;
     let cameraTheta = 0;
     let cameraPhi = 1.4;
     camera.position.set(0, 10, 28);
