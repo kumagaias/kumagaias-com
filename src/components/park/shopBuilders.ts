@@ -356,8 +356,11 @@ function buildRestaurant(container: THREE.Object3D, x: number, z: number): Build
 
 export function buildShop(container: THREE.Object3D, shop: PlacedShop): BuildResult {
   switch (shop.type) {
-    case "foodStall":  return buildFoodStall(container, shop.x, shop.z);
-    case "cafe":       return buildCafe(container, shop.x, shop.z);
-    case "restaurant": return buildRestaurant(container, shop.x, shop.z);
+    case "foodStall":    return buildFoodStall(container, shop.x, shop.z);
+    case "cafe":         return buildCafe(container, shop.x, shop.z);
+    case "restaurant":   return buildRestaurant(container, shop.x, shop.z);
+    case "iceCreamShop": return buildFoodStall(container, shop.x, shop.z);
+    case "souvenir":     return buildCafe(container, shop.x, shop.z);
+    case "hotel":        return buildRestaurant(container, shop.x, shop.z);
   }
 }

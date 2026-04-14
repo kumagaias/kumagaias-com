@@ -175,6 +175,8 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
   const nightLightsRef = useRef<THREE.PointLight[]>([]);
   /** All materials with night emissive (from builders). emissiveIntensity scaled by nightFactor. */
   const nightMatsRef = useRef<THREE.MeshLambertMaterial[]>([]);
+  /** Street-lamp glow sphere material — opacity driven by nightFactor. */
+  const glowMatRef = useRef<THREE.MeshBasicMaterial | null>(null);
 
   type InfoPanel = { id: string; kind: "attraction" | "shop"; screenX: number; screenY: number };
   const [infoPanel, setInfoPanel] = useState<InfoPanel | null>(null);
@@ -705,6 +707,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       nightMatsRef.current.push(lampMat);
       const armMat   = new THREE.MeshLambertMaterial({ color: 0x334455 });
       const glowMat  = new THREE.MeshBasicMaterial({ color: 0xffee88, transparent: true, opacity: 0 });
+      glowMatRef.current = glowMat;
 
       const addLamp = (lx: number, lz: number, facingLeft = false) => {
         const lp = new THREE.Group();
@@ -1187,7 +1190,7 @@ export default function ParkScene({ attractions, placingType, onPlace, onBalloon
       const lightOn = Math.max(0, Math.min(1, (nightFactor - 0.25) / 0.35));
       nightLightsRef.current.forEach(pl => { pl.intensity = lightOn * ((pl.userData.maxI as number) ?? 1); });
       nightMatsRef.current.forEach(m => { m.emissiveIntensity = lightOn * ((m.userData.ni as number) ?? 0.8); });
-      glowMat.opacity = lightOn * 0.6;
+      if (glowMatRef.current) glowMatRef.current.opacity = lightOn * 0.6;
       // ── end cycle ──────────────────────────────────────────────────────────
 
       // Weather tick
