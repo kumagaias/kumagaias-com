@@ -107,6 +107,7 @@ function SiteHeader({ route }: { route: string }) {
     >
       <a
         href="/"
+        className="site-brand"
         style={{
           color: "inherit",
           textDecoration: "none",

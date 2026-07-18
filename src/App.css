@@ -45,8 +45,13 @@
   background: #8de0d2;
 }
 
+.site-brand {
+  flex: 0 0 auto;
+}
+
 .site-lang-switch {
   display: flex;
+  flex: 0 0 auto;
   gap: 2px;
   padding: 3px;
   border-radius: 999px;
@@ -145,19 +150,44 @@
 }
 
 @media (max-width: 760px) {
+  .page-shell {
+    padding-top: 104px !important;
+  }
+
   .site-header {
-    top: 58px !important;
-    right: 14px !important;
-    align-items: flex-start !important;
+    top: 10px !important;
+    left: 10px !important;
+    right: 10px !important;
+    gap: 8px !important;
+    padding: 9px 10px !important;
     flex-direction: column !important;
+    align-items: stretch !important;
+    border-radius: 10px !important;
   }
 
   .site-nav {
     width: 100%;
-    justify-content: space-between;
-    gap: 8px !important;
+    justify-content: flex-start;
+    gap: 6px !important;
     font-size: 0.78rem !important;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .site-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .site-nav-link {
+    flex: 0 0 auto;
+    padding: 7px 10px;
+    white-space: nowrap;
+  }
+
+  .site-lang-switch {
+    margin-left: 2px;
   }
 
   .corporate-overview,
@@ -179,7 +209,7 @@
 
   .corporate-hero-copy {
     margin: 0 !important;
-    padding: 190px 20px 340px !important;
+    padding: 145px 20px 340px !important;
   }
 
   .corporate-hero-image {
@@ -205,6 +235,6 @@
 
 @media (max-width: 520px) {
   .site-header {
-    position: absolute !important;
+    position: fixed !important;
   }
 }

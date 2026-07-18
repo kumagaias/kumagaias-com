@@ -15,7 +15,8 @@ export default function ContactSection() {
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     if (data.get("company_url")) return;
 
     const name = String(data.get("name") ?? "").trim();
@@ -36,7 +37,7 @@ export default function ContactSection() {
           body: JSON.stringify({ name, reply_to: replyTo, message, company_url: data.get("company_url") ?? "" }),
         });
         if (!res.ok) throw new Error(`Contact API failed: ${res.status}`);
-        event.currentTarget.reset();
+        form.reset();
         setStatus(lang === "jp" ? "送信しました。" : "Message sent.");
       } catch {
         setStatus(lang === "jp" ? "送信に失敗しました。メールアプリから送信してください。" : "Could not send. Please use your email app.");
