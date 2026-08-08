@@ -5,6 +5,7 @@ import CompanyPage from "./pages/CompanyPage";
 import ContactPage from "./pages/ContactPage";
 import PlayPage from "./pages/PlayPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import ProductsPage from "./pages/ProductsPage";
 import "./App.css";
 
 const theme = {
@@ -38,12 +39,12 @@ const corporateSections = [
     bodyEn: "Through games and interaction prototypes, we explore interfaces and experiences that are useful, approachable, and enjoyable to keep using.",
   },
   {
-    labelJp: "Cloud Operations",
-    labelEn: "Cloud",
+    labelJp: "Technology Operations",
+    labelEn: "Technology",
     titleJp: "小さく始めて、安全に育てる",
     titleEn: "Start small and grow safely",
-    bodyJp: "AWS を中心に、必要な分だけ使える構成でサービスを運用し、コスト、セキュリティ、継続的な改善を意識して開発しています。",
-    bodyEn: "Using AWS-centered architecture, we operate services with attention to cost, security, and continuous improvement.",
+    bodyJp: "プロダクトの特性に合う技術を選び、必要な分だけ使える構成で、コスト、セキュリティ、継続的な改善を意識して開発・運用しています。",
+    bodyEn: "We choose technologies suited to each product and build lean systems with cost, security, and continuous improvement in mind.",
   },
 ];
 
@@ -70,6 +71,7 @@ function ShellSection({ children, id }: { children: React.ReactNode; id?: string
 
 function navState(route: string, target: string) {
   if (target === "about") return route === "" || route === "#top" || route === "#about";
+  if (target === "products") return route === "#/products" || route === "#works";
   if (target === "company") return route === "#/company";
   if (target === "play") return route === "#/play";
   if (target === "privacy") return route === "#/privacy";
@@ -120,6 +122,9 @@ function SiteHeader({ route }: { route: string }) {
       <nav className="site-nav" style={{ display: "flex", alignItems: "center", gap: "14px", fontSize: "0.84rem", fontWeight: 700 }}>
         <a href="#about" className={navClass(route, "about")}>
           {lang === "jp" ? "事業" : "About"}
+        </a>
+        <a href="#/products" className={navClass(route, "products")}>
+          {lang === "jp" ? "プロダクト" : "Products"}
         </a>
         <a href="#/company" className={navClass(route, "company")}>
           {lang === "jp" ? "会社概要" : "Company"}
@@ -173,8 +178,8 @@ function CorporateIntro() {
             </h1>
             <p style={{ margin: "18px 0 0", maxWidth: "680px", fontSize: "clamp(1.02rem, 2.4vw, 1.35rem)", lineHeight: 1.65, fontWeight: 700, opacity: 0.82 }}>
               {lang === "jp"
-              ? "kumagaias は、兄弟で運営するプロダクトスタジオです。育児、リモートワーク、遊び心のある体験を軸に、Web とモバイルの実用的なソフトウェアを企画・開発しています。"
-              : "kumagaias is a sibling-run product studio focused on parenting, remote work, and playful digital experiences through practical web and mobile software."}
+              ? "kumagaias は、育児、リモートワーク、遊び心のある体験を軸に、Web とモバイルの実用的なソフトウェアを企画・開発するプロダクトスタジオです。"
+              : "kumagaias is a product studio focused on parenting, remote work, and playful digital experiences through practical web and mobile software."}
             </p>
           </div>
           <div
@@ -248,6 +253,15 @@ function AppContent() {
       <>
         <SiteHeader route={route} />
         <PrivacyPage />
+      </>
+    );
+  }
+
+  if (route === "#/products") {
+    return (
+      <>
+        <SiteHeader route={route} />
+        <ProductsPage />
       </>
     );
   }
@@ -348,7 +362,6 @@ function AppContent() {
 
       <CorporateIntro />
 
-      {/* Works */}
       <WorksSection />
 
       <footer

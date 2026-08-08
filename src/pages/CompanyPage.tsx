@@ -4,9 +4,7 @@ const facts = [
   { labelJp: "屋号", labelEn: "Trade Name", value: "kumagaias" },
   { labelJp: "設立", labelEn: "Established", valueJp: "2025年9月", valueEn: "September 2025" },
   { labelJp: "所在地", labelEn: "Location", valueJp: "東京都", valueEn: "Tokyo, Japan" },
-  { labelJp: "運営体制", labelEn: "Team", valueJp: "兄弟による共同運営", valueEn: "Sibling-run studio" },
   { labelJp: "事業内容", labelEn: "Business", valueJp: "Web / モバイルアプリの企画・開発・運用", valueEn: "Planning, development, and operation of web and mobile apps" },
-  { labelJp: "利用基盤", labelEn: "Cloud", valueJp: "AWS を中心としたクラウド基盤", valueEn: "AWS-centered cloud infrastructure" },
 ];
 
 export default function CompanyPage() {
@@ -23,8 +21,8 @@ export default function CompanyPage() {
         </h1>
         <p style={{ margin: "18px 0 34px", maxWidth: "760px", lineHeight: 1.85, opacity: 0.78, fontWeight: 650 }}>
           {lang === "jp"
-            ? "kumagaias は、兄弟で運営するプロダクトスタジオです。育児、リモートワーク、遊び心のある体験を軸に、暮らしと仕事の中で長く使えるソフトウェアを企画・開発しています。AWS を中心に、運用しやすく拡張しやすい構成でサービスを育てています。"
-            : "kumagaias is a sibling-run product studio. We plan and develop lasting software around parenting, remote work, and playful digital experiences, using AWS-centered infrastructure that is practical to operate and grow."}
+            ? "kumagaias は、育児、リモートワーク、遊び心のある体験を軸に、暮らしと仕事の中で長く使えるソフトウェアを企画・開発するプロダクトスタジオです。プロダクトの特性に合う技術を選び、運用しやすく拡張しやすい構成でサービスを育てています。"
+            : "kumagaias is a product studio that plans and develops lasting software around parenting, remote work, and playful digital experiences. We choose technologies suited to each product and build services that are practical to operate and grow."}
         </p>
 
         <div style={{ borderTop: "1px solid rgba(31,45,46,0.16)" }}>
