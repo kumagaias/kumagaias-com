@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import WorksSection from "./components/WorksSection";
+import SiteFooter from "./components/site/SiteFooter";
 import { LanguageProvider, useLang } from "./contexts/LanguageContext";
 import CompanyPage from "./pages/CompanyPage";
 import ContactPage from "./pages/ContactPage";
@@ -253,6 +254,7 @@ function AppContent() {
       <>
         <SiteHeader route={route} />
         <PrivacyPage />
+        <SiteFooter />
       </>
     );
   }
@@ -262,6 +264,7 @@ function AppContent() {
       <>
         <SiteHeader route={route} />
         <ProductsPage />
+        <SiteFooter />
       </>
     );
   }
@@ -271,6 +274,7 @@ function AppContent() {
       <>
         <SiteHeader route={route} />
         <CompanyPage />
+        <SiteFooter />
       </>
     );
   }
@@ -280,6 +284,7 @@ function AppContent() {
       <>
         <SiteHeader route={route} />
         <PlayPage />
+        <SiteFooter />
       </>
     );
   }
@@ -289,6 +294,7 @@ function AppContent() {
       <>
         <SiteHeader route={route} />
         <ContactPage />
+        <SiteFooter />
       </>
     );
   }
@@ -364,19 +370,7 @@ function AppContent() {
 
       <WorksSection />
 
-      <footer
-        style={{
-          padding: "8px 24px 28px",
-          textAlign: "center",
-          fontSize: "0.78rem",
-          fontWeight: 600,
-          letterSpacing: "0.02em",
-          opacity: 0.55,
-        }}
-      >
-        Copyright &copy; 2026 kumagaias. All rights reserved. &nbsp;|&nbsp; <a href="#/privacy" style={{ color: "inherit" }}>Privacy Policy</a>
-        &nbsp;|&nbsp; <a href="#/contact" style={{ color: "inherit" }}>Contact</a>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
