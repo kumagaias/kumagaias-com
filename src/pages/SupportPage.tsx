@@ -1,21 +1,174 @@
+import { useState, type FormEvent } from "react";
 import { useLang } from "../contexts/LanguageContext";
 
 const contactEmail = "contact@kumagaias.com";
+const contactEndpoint = import.meta.env.VITE_CONTACT_API_URL;
 
-function deletionRequestHref(isJapanese: boolean) {
-  const subject = isJapanese ? "Pashabookアカウント削除の依頼" : "Pashabook account deletion request";
-  const body = isJapanese
-    ? "登録メールアドレス:\n\nPashabookアカウントと関連データの削除を希望します。"
-    : "Account email address:\n\nI request deletion of my Pashabook account and associated data.";
-  return `mailto:${contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-}
+type FormStatus = {
+  kind: "sending" | "success" | "error";
+  message: string;
+};
 
-function supportRequestHref(isJapanese: boolean) {
-  const subject = isJapanese ? "Pashabookサポートの問い合わせ" : "Pashabook support request";
-  const body = isJapanese
-    ? "登録メールアドレス（任意）:\n端末・OS（任意）:\nアプリのバージョン（任意）:\n\nお問い合わせ内容:"
-    : "Account email (optional):\nDevice / OS (optional):\nApp version (optional):\n\nHow can we help?";
-  return `mailto:${contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+function AccountDeletionForm({ isJapanese }: { isJapanese: boolean }) {
+  const [sending, setSending] = useState(false);
+  const [status, setStatus] = useState<FormStatus | null>(null);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (sending) return;
+
+    const form = event.currentTarget;
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      setStatus({
+        kind: "error",
+        message: isJapanese
+          ? "登録メールアドレスを正しく入力してください。"
+          : "Enter a valid registered email address.",
+      });
+      return;
+    }
+
+    const data = new FormData(form);
+    if (String(data.get("company_url") ?? "").trim()) return;
+
+    const registeredEmail = String(data.get("reply_to") ?? "").trim();
+    const details = String(data.get("details") ?? "").trim();
+    if (!registeredEmail) {
+      setStatus({
+        kind: "error",
+        message: isJapanese ? "登録メールアドレスを入力してください。" : "Enter your registered email address.",
+      });
+      return;
+    }
+
+    if (!contactEndpoint) {
+      setStatus({
+        kind: "error",
+        message: isJapanese
+          ? "送信フォームを利用できません。下記の連絡先へメールでご依頼ください。"
+          : "The request form is unavailable. Please email us using the contact link below.",
+      });
+      return;
+    }
+
+    const messageParts = [
+      isJapanese
+        ? "Pashabookアカウントおよび関連データの削除を依頼します。"
+        : "I request deletion of my Pashabook account and associated data.",
+      (isJapanese ? "登録メールアドレス: " : "Registered email: ") + registeredEmail,
+    ];
+    if (details) {
+      messageParts.push((isJapanese ? "補足情報:\n" : "Additional details:\n") + details);
+    }
+
+    setSending(true);
+    setStatus({
+      kind: "sending",
+      message: isJapanese ? "削除依頼を送信しています..." : "Sending your deletion request...",
+    });
+
+    try {
+      const response = await fetch(contactEndpoint.replace(/\/$/, "") + "/contact", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: isJapanese ? "Pashabookアカウント削除依頼" : "Pashabook account deletion request",
+          reply_to: registeredEmail,
+          message: messageParts.join("\n\n"),
+          company_url: data.get("company_url") ?? "",
+        }),
+      });
+      if (!response.ok) throw new Error("Contact request failed");
+
+      form.reset();
+      setStatus({
+        kind: "success",
+        message: isJapanese
+          ? "削除依頼を受け付けました。確認が必要な場合は登録メールアドレスへご連絡します。"
+          : "Your deletion request has been received. We will contact your registered email if verification is needed.",
+      });
+    } catch {
+      setStatus({
+        kind: "error",
+        message: isJapanese
+          ? "送信できませんでした。下記の連絡先へメールでご依頼ください。"
+          : "We could not send your request. Please email us using the contact link below.",
+      });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div>
+      <form onSubmit={handleSubmit} noValidate style={formStyle}>
+        <input
+          name="company_url"
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          className="contact-honeypot"
+        />
+        <label htmlFor="deletion-reply-email" style={labelStyle}>
+          {isJapanese ? "登録メールアドレス（必須）" : "Registered email address (required)"}
+          <input
+            id="deletion-reply-email"
+            name="reply_to"
+            type="email"
+            autoComplete="email"
+            required
+            maxLength={320}
+            aria-describedby="deletion-email-help"
+            className="contact-input"
+            style={inputStyle}
+            disabled={sending}
+          />
+        </label>
+        <p id="deletion-email-help" style={helpStyle}>
+          {isJapanese
+            ? "Pashabookアカウントに登録したメールアドレスを入力してください。"
+            : "Use the email address registered to your Pashabook account."}
+        </p>
+        <label htmlFor="deletion-details" style={labelStyle}>
+          {isJapanese ? "補足情報（任意）" : "Additional details (optional)"}
+          <textarea
+            id="deletion-details"
+            name="details"
+            rows={4}
+            maxLength={5000}
+            className="contact-input"
+            style={inputStyle}
+            disabled={sending}
+          />
+        </label>
+        <p style={helpStyle}>
+          {isJapanese
+            ? "このフォームはアカウントと関連データの削除を依頼するためのものです。パスワードや決済情報は送信しないでください。"
+            : "This form is for requesting deletion of your account and associated data. Do not send passwords or payment details."}
+        </p>
+        <button type="submit" className="contact-submit" style={submitStyle} disabled={sending}>
+          {sending
+            ? (isJapanese ? "送信中..." : "Sending...")
+            : (isJapanese ? "アカウント削除を依頼" : "Request account deletion")}
+        </button>
+      </form>
+      {status && (
+        <div
+          role={status.kind === "error" ? "alert" : "status"}
+          aria-live={status.kind === "error" ? "assertive" : "polite"}
+          style={statusStyle(status.kind)}
+        >
+          {status.message}{" "}
+          {status.kind === "error" && (
+            <a href={"mailto:" + contactEmail} style={{ color: "inherit", fontWeight: 800 }}>
+              {contactEmail}
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function SupportPage() {
@@ -46,12 +199,12 @@ export default function SupportPage() {
           </p>
           <p style={paragraphStyle}>
             {isJapanese
-              ? "サインインできない場合は、下のボタンから contact@kumagaias.com へ削除を依頼してください。登録メールアドレスを記載してください。本人確認に追加情報が必要な場合は、返信でご案内します。パスワードや決済情報は送らないでください。"
-              : "If you cannot sign in, email contact@kumagaias.com using the button below. Include the email address registered to your account. If we need more information to verify the request, we will reply with instructions. Do not send your password or payment details."}
+              ? "サインインできない場合は、下のフォームから削除を依頼できます。登録メールアドレスを入力してください。本人確認に追加情報が必要な場合は、返信でご案内します。"
+              : "If you cannot sign in, request deletion using the form below. Enter the email address registered to your account. If additional information is needed to verify the request, we will reply with instructions."}
           </p>
-          <a href={deletionRequestHref(isJapanese)} style={buttonStyle}>
-            {isJapanese ? "アカウント削除をメールで依頼" : "Request account deletion by email"}
-          </a>
+          <div style={{ marginTop: "22px" }}>
+            <AccountDeletionForm isJapanese={isJapanese} />
+          </div>
           <p style={noteStyle}>
             {isJapanese
               ? "削除すると、アカウント、プロフィール、子どもプロフィール、アップロードした絵、生成した絵本、生成ジョブ、関連アセットが削除されます。削除後は復元できません。サブスクリプションはApp StoreまたはGoogle Playで別途解約してください。"
@@ -66,12 +219,9 @@ export default function SupportPage() {
               ? "問題の内容に加えて、登録メールアドレス（任意）、端末・OS、アプリのバージョンをお知らせいただくと確認がスムーズです。"
               : "To help us investigate, describe the issue and, if available, include your account email, device and OS, and app version."}
           </p>
-          <a href={supportRequestHref(isJapanese)} style={buttonStyle}>
-            {isJapanese ? "サポートへメール" : "Email Pashabook support"}
-          </a>
           <p style={contactStyle}>
-            {isJapanese ? "連絡先: " : "Contact: "}
-            <a href={`mailto:${contactEmail}`} style={{ color: "inherit", fontWeight: 800 }}>{contactEmail}</a>
+            {isJapanese ? "サポート連絡先: " : "Support email: "}
+            <a href={"mailto:" + contactEmail} style={{ color: "inherit", fontWeight: 800 }}>{contactEmail}</a>
           </p>
         </section>
       </div>
@@ -91,15 +241,16 @@ const headingStyle: React.CSSProperties = { margin: 0, fontSize: "1.25rem", line
 const paragraphStyle: React.CSSProperties = { margin: "14px 0 0", lineHeight: 1.8, opacity: 0.8, fontWeight: 600 };
 const noteStyle: React.CSSProperties = { margin: "18px 0 0", lineHeight: 1.8, opacity: 0.72, fontSize: "0.9rem" };
 const contactStyle: React.CSSProperties = { margin: "18px 0 0", fontSize: "0.9rem", opacity: 0.76 };
-const buttonStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  minHeight: "46px",
-  marginTop: "20px",
-  padding: "10px 18px",
-  borderRadius: "6px",
-  background: "#1f2d2e",
-  color: "#fff",
-  fontWeight: 800,
-  textDecoration: "none",
-};
+const formStyle: React.CSSProperties = { display: "grid", gap: "12px" };
+const labelStyle: React.CSSProperties = { display: "grid", gap: "7px", fontWeight: 800, lineHeight: 1.5 };
+const inputStyle: React.CSSProperties = { borderColor: "rgba(31,45,46,0.28)", background: "#fff", color: "#1f2d2e" };
+const helpStyle: React.CSSProperties = { margin: "-6px 0 4px", lineHeight: 1.65, opacity: 0.76, fontSize: "0.9rem" };
+const submitStyle: React.CSSProperties = { marginTop: "4px", background: "#1f2d2e", color: "#fff", padding: "10px 18px" };
+function statusStyle(kind: FormStatus["kind"]): React.CSSProperties {
+  return {
+    marginTop: "14px",
+    lineHeight: 1.65,
+    fontWeight: 700,
+    color: kind === "error" ? "#8f2525" : "#315e43",
+  };
+}
