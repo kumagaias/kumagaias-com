@@ -4,6 +4,20 @@ import { useLang } from "../contexts/LanguageContext";
 const contactEmail = "contact@kumagaias.com";
 const contactEndpoint = import.meta.env.VITE_CONTACT_API_URL;
 
+const supportApps = [
+  { value: "gakkyu-alert", labelJp: "学級アラート (gakkyu-alert)", labelEn: "Class Alert (gakkyu-alert)", nameJp: "学級アラート", nameEn: "Class Alert" },
+  { value: "pashabook", labelJp: "パシャブック (pashabook)", labelEn: "Pashabook (pashabook)", nameJp: "パシャブック", nameEn: "Pashabook" },
+  { value: "other", labelJp: "その他", labelEn: "Other", nameJp: "", nameEn: "" },
+];
+
+function supportRequestHref(isJapanese: boolean, appName: string) {
+  const subject = isJapanese ? `${appName}のサポート問い合わせ` : `${appName} support request`;
+  const body = isJapanese
+    ? `アプリ名: ${appName}\n登録メールアドレス（任意）:\n端末・OS（任意）:\nアプリのバージョン（任意）:\n\nお問い合わせ内容:`
+    : `App: ${appName}\nAccount email (optional):\nDevice / OS (optional):\nApp version (optional):\n\nHow can we help?`;
+  return `mailto:${contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
 type FormStatus = {
   kind: "sending" | "success" | "error";
   message: string;
@@ -174,23 +188,63 @@ function AccountDeletionForm({ isJapanese }: { isJapanese: boolean }) {
 export default function SupportPage() {
   const { lang } = useLang();
   const isJapanese = lang === "jp";
+  const [selectedApp, setSelectedApp] = useState("pashabook");
+  const [customAppName, setCustomAppName] = useState("");
+  const selectedOption = supportApps.find((app) => app.value === selectedApp);
+  const appName = selectedApp === "other"
+    ? customAppName.trim()
+    : (isJapanese ? selectedOption?.nameJp : selectedOption?.nameEn) ?? "";
 
   return (
     <main style={{ minHeight: "100vh", background: "#f7f3ea", color: "#1f2d2e", padding: "112px 24px 56px" }}>
       <div style={{ maxWidth: "820px", margin: "0 auto" }}>
         <p style={{ margin: "32px 0 10px", fontSize: "0.76rem", fontWeight: 900, letterSpacing: "0.14em", textTransform: "uppercase", color: "#476c5c" }}>
-          Pashabook Support
+          {isJapanese ? "アプリサポート" : "App Support"}
         </p>
         <h1 style={{ margin: 0, fontSize: "clamp(2rem, 5vw, 3.4rem)", lineHeight: 1.1 }}>
-          {isJapanese ? "Pashabook サポート" : "Pashabook Support"}
+          {isJapanese ? `${appName || "アプリ"} サポート` : `${appName || "App"} Support`}
         </h1>
         <p style={{ margin: "18px 0 34px", maxWidth: "760px", lineHeight: 1.85, opacity: 0.78, fontWeight: 650 }}>
           {isJapanese
-            ? "Pashabookの使い方や不具合についてのお問い合わせ、アカウントと関連データの削除依頼はこちらをご確認ください。"
-            : "Get help with Pashabook, report a problem, or request deletion of your account and associated data."}
+            ? "アプリの使い方や不具合についてのお問い合わせを受け付けています。Pashabookのアカウント削除依頼は、パシャブックを選ぶと表示されます。"
+            : "Get help with an app or report a problem. Pashabook account deletion options appear when Pashabook is selected."}
         </p>
 
-        <section style={sectionStyle}>
+        <section style={{ ...sectionStyle, marginTop: 0 }}>
+          <label htmlFor="support-app" style={labelStyle}>
+            {isJapanese ? "アプリ名" : "App"}
+            <select
+              id="support-app"
+              value={selectedApp}
+              onChange={(event) => setSelectedApp(event.target.value)}
+              className="contact-input"
+              style={inputStyle}
+            >
+              {supportApps.map((app) => (
+                <option key={app.value} value={app.value}>
+                  {isJapanese ? app.labelJp : app.labelEn}
+                </option>
+              ))}
+            </select>
+          </label>
+          {selectedApp === "other" && (
+            <label htmlFor="support-other-app" style={{ ...labelStyle, marginTop: "14px" }}>
+              {isJapanese ? "アプリ名を入力" : "Enter the app name"}
+              <input
+                id="support-other-app"
+                value={customAppName}
+                onChange={(event) => setCustomAppName(event.target.value)}
+                className="contact-input"
+                style={inputStyle}
+                maxLength={120}
+                aria-required="true"
+              />
+            </label>
+          )}
+        </section>
+
+        {selectedApp === "pashabook" && (
+          <section style={sectionStyle}>
           <h2 style={headingStyle}>{isJapanese ? "アカウントとデータを削除する" : "Delete your account and data"}</h2>
           <p style={paragraphStyle}>
             {isJapanese
@@ -210,15 +264,25 @@ export default function SupportPage() {
               ? "削除すると、アカウント、プロフィール、子どもプロフィール、アップロードした絵、生成した絵本、生成ジョブ、関連アセットが削除されます。削除後は復元できません。サブスクリプションはApp StoreまたはGoogle Playで別途解約してください。"
               : "Deletion removes your account, profiles, child profiles, uploaded drawings, generated storybooks, generation jobs, and related assets. It cannot be undone. Cancel subscriptions separately through the App Store or Google Play."}
           </p>
-        </section>
+          </section>
+        )}
 
         <section style={sectionStyle}>
           <h2 style={headingStyle}>{isJapanese ? "使い方・不具合のお問い合わせ" : "Product help and bug reports"}</h2>
           <p style={paragraphStyle}>
             {isJapanese
-              ? "問題の内容に加えて、登録メールアドレス（任意）、端末・OS、アプリのバージョンをお知らせいただくと確認がスムーズです。"
-              : "To help us investigate, describe the issue and, if available, include your account email, device and OS, and app version."}
+              ? "お問い合わせの際は、端末・OS、アプリのバージョンもお知らせいただくと確認がスムーズです。"
+              : "To help us investigate, include your device and OS, app version, and a description of the issue."}
           </p>
+          {appName ? (
+            <a href={supportRequestHref(isJapanese, appName)} style={buttonStyle}>
+              {isJapanese ? "メールでサポートに問い合わせ" : "Email support"}
+            </a>
+          ) : (
+            <p style={paragraphStyle}>
+              {isJapanese ? "その他を選んだ場合は、先にアプリ名を入力してください。" : "Enter the app name above to prepare your support email."}
+            </p>
+          )}
           <p style={contactStyle}>
             {isJapanese ? "サポート連絡先: " : "Support email: "}
             <a href={"mailto:" + contactEmail} style={{ color: "inherit", fontWeight: 800 }}>{contactEmail}</a>
@@ -241,6 +305,18 @@ const headingStyle: React.CSSProperties = { margin: 0, fontSize: "1.25rem", line
 const paragraphStyle: React.CSSProperties = { margin: "14px 0 0", lineHeight: 1.8, opacity: 0.8, fontWeight: 600 };
 const noteStyle: React.CSSProperties = { margin: "18px 0 0", lineHeight: 1.8, opacity: 0.72, fontSize: "0.9rem" };
 const contactStyle: React.CSSProperties = { margin: "18px 0 0", fontSize: "0.9rem", opacity: 0.76 };
+const buttonStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  minHeight: "46px",
+  marginTop: "20px",
+  padding: "10px 18px",
+  borderRadius: "6px",
+  background: "#1f2d2e",
+  color: "#fff",
+  fontWeight: 800,
+  textDecoration: "none",
+};
 const formStyle: React.CSSProperties = { display: "grid", gap: "12px" };
 const labelStyle: React.CSSProperties = { display: "grid", gap: "7px", fontWeight: 800, lineHeight: 1.5 };
 const inputStyle: React.CSSProperties = { borderColor: "rgba(31,45,46,0.28)", background: "#fff", color: "#1f2d2e" };
