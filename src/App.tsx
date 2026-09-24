@@ -7,6 +7,7 @@ import ContactPage from "./pages/ContactPage";
 import PlayPage from "./pages/PlayPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import ProductsPage from "./pages/ProductsPage";
+import SupportPage from "./pages/SupportPage";
 import "./App.css";
 
 const theme = {
@@ -294,6 +295,16 @@ function AppContent() {
       <>
         <SiteHeader route={route} />
         <ContactPage />
+        <SiteFooter />
+      </>
+    );
+  }
+
+  if (route === "#/support") {
+    return (
+      <>
+        <SiteHeader route={route} />
+        <SupportPage />
         <SiteFooter />
       </>
     );
