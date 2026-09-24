@@ -76,7 +76,7 @@ function navState(route: string, target: string) {
   if (target === "company") return route === "#/company";
   if (target === "play") return route === "#/play";
   if (target === "privacy") return route === "#/privacy";
-  if (target === "contact") return route === "#/contact";
+  if (target === "contact") return route === "#/contact" || route === "#/support";
   return false;
 }
 
@@ -289,11 +289,11 @@ function AppContent() {
     );
   }
 
-  if (route === "#/contact") {
+  if (route === "#/contact" || route === "#/support") {
     return (
       <>
         <SiteHeader route={route} />
-        <ContactPage />
+        <ContactPage support={route === "#/support"} />
         <SiteFooter />
       </>
     );

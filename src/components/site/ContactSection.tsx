@@ -8,10 +8,17 @@ function contactAddress() {
 
 const contactEndpoint = import.meta.env.VITE_CONTACT_API_URL;
 
-export default function ContactSection() {
+const appOptions = [
+  { value: "gakkyu-alert", labelJp: "学級アラート (gakkyu-alert)", labelEn: "Class Alert (gakkyu-alert)" },
+  { value: "pashabook", labelJp: "パシャブック (pashabook)", labelEn: "Pashabook (pashabook)" },
+  { value: "other", labelJp: "その他", labelEn: "Other" },
+];
+
+export default function ContactSection({ support = false }: { support?: boolean }) {
   const { lang } = useLang();
   const [status, setStatus] = useState("");
   const [sending, setSending] = useState(false);
+  const [selectedApp, setSelectedApp] = useState("");
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -22,10 +29,19 @@ export default function ContactSection() {
     const name = String(data.get("name") ?? "").trim();
     const replyTo = String(data.get("reply_to") ?? "").trim();
     const message = String(data.get("message") ?? "").trim();
-    if (!name || !replyTo || !message) {
+    const appId = support ? String(data.get("app") ?? "") : "";
+    const appOption = appOptions.find((option) => option.value === appId);
+    const customAppName = String(data.get("app_name") ?? "").trim();
+    const appName = appId === "other"
+      ? customAppName
+      : lang === "jp" ? appOption?.labelJp : appOption?.labelEn;
+    if (!name || !replyTo || !message || (support && (!appOption || !appName))) {
       setStatus(lang === "jp" ? "必須項目を入力してください。" : "Please fill in the required fields.");
       return;
     }
+    const messageWithApp = support
+      ? `${lang === "jp" ? "アプリ" : "App"}: ${appName}\n\n${message}`
+      : message;
 
     if (contactEndpoint) {
       setSending(true);
@@ -34,10 +50,17 @@ export default function ContactSection() {
         const res = await fetch(`${contactEndpoint.replace(/\/$/, "")}/contact`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ name, reply_to: replyTo, message, company_url: data.get("company_url") ?? "" }),
+          body: JSON.stringify({
+            ...(support ? { app: appId, app_name: appName } : {}),
+            name,
+            reply_to: replyTo,
+            message: messageWithApp,
+            company_url: data.get("company_url") ?? "",
+          }),
         });
         if (!res.ok) throw new Error(`Contact API failed: ${res.status}`);
         form.reset();
+        setSelectedApp("");
         setStatus(lang === "jp" ? "送信しました。" : "Message sent.");
       } catch {
         setStatus(lang === "jp" ? "送信に失敗しました。メールアプリから送信してください。" : "Could not send. Please use your email app.");
@@ -47,8 +70,8 @@ export default function ContactSection() {
       return;
     }
 
-    const subject = encodeURIComponent(`Inquiry from ${name}`);
-    const body = encodeURIComponent(`Name: ${name}\nEmail: ${replyTo}\n\n${message}`);
+    const subject = encodeURIComponent(support ? `Inquiry about ${appName} from ${name}` : `Inquiry from ${name}`);
+    const body = encodeURIComponent(`${support ? `App: ${appName}\n` : ""}Name: ${name}\nEmail: ${replyTo}\n\n${message}`);
     window.location.href = `mailto:${contactAddress()}?subject=${subject}&body=${body}`;
     setStatus(lang === "jp" ? "メールアプリを起動します。" : "Opening your email app.");
   }
@@ -66,17 +89,48 @@ export default function ContactSection() {
             Contact
           </p>
           <h2 style={{ margin: 0, fontSize: "1.75rem", lineHeight: 1.25 }}>
-            {lang === "jp" ? "プロダクト開発や協業の相談" : "Product development and collaboration"}
+            {support
+              ? (lang === "jp" ? "アプリに関するお問い合わせ" : "App support")
+              : (lang === "jp" ? "プロダクト開発や協業の相談" : "Product development and collaboration")}
           </h2>
           <p style={{ margin: "14px 0 0", lineHeight: 1.7, opacity: 0.78, fontWeight: 600 }}>
-            {lang === "jp"
-              ? "Web / モバイルアプリの企画、開発、運用、協業に関するご相談を承ります。"
-              : "We welcome inquiries about web and mobile app planning, development, operations, and collaboration."}
+            {support
+              ? (lang === "jp"
+                ? "学級アラート、パシャブックなど、各アプリの使い方や不具合についてご連絡ください。"
+                : "Contact us with questions or issue reports about Class Alert, Pashabook, or another app.")
+              : (lang === "jp"
+                ? "Web / モバイルアプリの企画、開発、運用、協業に関するご相談を承ります。"
+                : "We welcome inquiries about web and mobile app planning, development, operations, and collaboration.")}
           </p>
         </div>
 
         <form onSubmit={onSubmit} className="contact-form">
           <input name="company_url" tabIndex={-1} autoComplete="off" aria-hidden="true" className="contact-honeypot" />
+          {support && (
+            <label className="contact-label">
+              {lang === "jp" ? "アプリ名" : "App"}
+              <select
+                name="app"
+                required
+                value={selectedApp}
+                onChange={(event) => setSelectedApp(event.target.value)}
+                className="contact-input"
+              >
+                <option value="" disabled>{lang === "jp" ? "アプリを選択してください" : "Select an app"}</option>
+                {appOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {lang === "jp" ? option.labelJp : option.labelEn}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {support && selectedApp === "other" && (
+            <FormField
+              label={lang === "jp" ? "アプリ名" : "App name"}
+              name="app_name"
+            />
+          )}
           <FormField label={lang === "jp" ? "お名前" : "Name"} name="name" autoComplete="name" />
           <FormField label={lang === "jp" ? "返信先メールアドレス" : "Reply email"} name="reply_to" type="email" autoComplete="email" />
           <label className="contact-label">
