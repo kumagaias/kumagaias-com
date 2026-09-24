@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLang } from "../../contexts/LanguageContext";
 
 function contactAddress() {
-  const parts = ["support", "kumagaias", "com"];
+  const parts = ["contact", "kumagaias", "com"];
   return `${parts[0]}@${parts[1]}.${parts[2]}`;
 }
 
@@ -101,6 +101,16 @@ export default function ContactSection({ support = false }: { support?: boolean 
               : (lang === "jp"
                 ? "Web / モバイルアプリの企画、開発、運用、協業に関するご相談を承ります。"
                 : "We welcome inquiries about web and mobile app planning, development, operations, and collaboration.")}
+          </p>
+          <p style={{ margin: "16px 0 0", fontSize: "0.92rem", lineHeight: 1.7, fontWeight: 700 }}>
+            {lang === "jp" ? "メールでのお問い合わせ: " : "Email us directly: "}
+            <a
+              href={`mailto:${contactAddress()}`}
+              aria-label={lang === "jp" ? `${contactAddress()} にメールを送る` : `Send email to ${contactAddress()}`}
+              style={{ color: "#8de0d2", textUnderlineOffset: "3px" }}
+            >
+              {contactAddress()}
+            </a>
           </p>
         </div>
 
